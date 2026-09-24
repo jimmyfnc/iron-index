@@ -38,6 +38,8 @@ interface WorkoutDao {
     @Query("SELECT * FROM equipment") fun observeEquipment(): Flow<List<EquipmentRow>>
     @Query("SELECT * FROM equipment") suspend fun allEquipment(): List<EquipmentRow>
     @Query("SELECT * FROM partners") fun observePartners(): Flow<List<PartnerRow>>
+    @Query("SELECT * FROM exercises") suspend fun allExercises(): List<ExerciseRow>
+    @Query("SELECT * FROM partners") suspend fun allPartners(): List<PartnerRow>
     @Upsert suspend fun putEquipment(row: EquipmentRow)
     @Upsert suspend fun putPartner(row: PartnerRow)
 }
@@ -130,6 +132,35 @@ class WorkoutStore(context: Context, databaseName: String = "iron-index.db") {
         val saved = existing?.copy(archived = false) ?: value
         dao.putEquipment(EquipmentRow(saved.id, json.encodeToString(saved)))
         saved
+    }
+    private class Snapshot(val workouts: List<Workout>, val exercises: List<Exercise>, val equipment: List<Equipment>, val partners: List<Partner>) {
+        fun plan(backup: Backup) = planImport(backup, workouts, exercises, equipment, partners)
+    }
+    private suspend fun snapshot() = Snapshot(
+        dao.all().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Workout>(it) },
+        dao.allExercises().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Exercise>(it) },
+        dao.allEquipment().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Equipment>(it) },
+        dao.allPartners().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Partner>(it) },
+    )
+
+    /** Everything the user has created, read under the edit lock so the copy is consistent. */
+    suspend fun exportBackup(appVersion: String): Backup = mutex.withLock {
+        val now = snapshot()
+        Backup(appVersion = appVersion, workouts = now.workouts, exercises = now.exercises, equipment = now.equipment, partners = now.partners)
+    }
+
+    suspend fun planImport(backup: Backup): ImportPlan = mutex.withLock { snapshot().plan(backup) }
+
+    /** Writes an import in one transaction: all of it lands, or none of it does. Re-plans under the lock so edits made meanwhile are respected. */
+    suspend fun applyImport(backup: Backup): ImportPlan = mutex.withLock {
+        val plan = snapshot().plan(backup)
+        db.withTransaction {
+            plan.workouts.forEach { write(it) }
+            plan.exercises.forEach { dao.putExercise(ExerciseRow(it.id, json.encodeToString(it))) }
+            plan.equipment.forEach { dao.putEquipment(EquipmentRow(it.id, json.encodeToString(it))) }
+            plan.partners.forEach { dao.putPartner(PartnerRow(it.id, json.encodeToString(it))) }
+        }
+        plan
     }
     suspend fun savePartner(partner: Partner) = dao.putPartner(PartnerRow(partner.id, json.encodeToString(partner)))
     suspend fun delete(id: String) = mutex.withLock { dao.delete(id) }

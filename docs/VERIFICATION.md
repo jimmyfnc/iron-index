@@ -1,5 +1,14 @@
 # IronIndex verification
 
+## 0.4.0 - 2026-09-24
+
+- assembleDebug, all 46 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 15 connected tests passed on emulator-5554 only. A physical phone connected during verification, so later commands were pinned with ANDROID_SERIAL and nothing was installed on it.
+- Unit coverage: round trip; import into an empty phone and re-import changes nothing; newer-wins workouts; an unfinished copy never replaces a finished session; phone-wins catalog; drafts restored only onto an empty phone; equipment/exercise identity linking (including defaultEquipmentId) with idempotent re-import; damaged/foreign/future/ID-less files rejected; BOM accepted; older-shaped backup parsed; size limit.
+- Connected coverage: export via the ViewModel, then import into a second database through the real UI (preview, Import, "Already up to date" on repeat) with exact equality of workouts, partner, equipment and custom exercise. Also: re-planning at apply time (a draft started after the preview keeps a single draft), and a damaged file shows an error and writes nothing.
+- Manual emulator run: exported through the Android file picker to Downloads (951 bytes), **uninstalled the app**, reinstalled, imported through the picker, and the session and partner were restored. Importing onto a phone with data shows the deleted-items warning.
+- Android Auto Backup: `bmgr backupnow` with the local transport succeeded; `pm clear` then `bmgr restore` brought the session back. The emulator transport was reset to Google's afterwards.
+- A code review found an unfinished copy replacing a finished session, identity duplicates, discarded drafts returning, the memory ceiling, "wt" provider support and a misleading reminder after a restore. All were fixed before release, with tests. Deletions coming back from older backups is disclosed in the preview; tombstones would need a Room migration and are tracked in ROADMAP.
+
 ## 0.3.4 - 2026-09-24
 
 - assembleDebug, all 33 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 12 connected tests passed on emulator-5554.

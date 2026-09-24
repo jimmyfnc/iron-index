@@ -1,6 +1,9 @@
 package com.ironindex.app
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.semantics.Role
@@ -295,3 +298,53 @@ fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: Lis
 }
 
 fun ExerciseMode.displayName(): String = when (this) { ExerciseMode.BILATERAL -> "Both sides together"; ExerciseMode.SINGLE_ARM -> "Single-arm · Left / Right"; ExerciseMode.SINGLE_LEG -> "Single-leg · Left / Right" }
+
+@Composable
+fun BackupScreen(workouts: List<Workout>, partners: List<Partner>, vm: IronIndexViewModel, back: () -> Unit) {
+    val lastExport by vm.lastExport.collectAsStateWithLifecycle()
+    val preview by vm.importPreview.collectAsStateWithLifecycle()
+    val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::exportTo) }
+    val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::readImport) }
+    val sessions = workouts.count { !it.isTemplate && it.finishedAt != null }
+    val routines = workouts.count { it.isTemplate }
+    LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { ManagerHeading("Backup & restore", "Your training lives only on this phone. Export a backup file and keep it somewhere safe: Drive, email or a computer.", back) }
+        item {
+            Surface(color = Panel, shape = MaterialTheme.shapes.large) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("${count(sessions, "session")} · ${count(routines, "routine")} · ${count(partners.size, "partner")}", fontWeight = FontWeight.Bold)
+                    Text(lastExport?.let { "Last exported ${dateLabel(it)}" } ?: "Never exported", color = if (lastExport == null) Coral else Muted)
+                }
+            }
+        }
+        item {
+            Button(onClick = { exporter.launch(backupFileName()) }, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
+                Icon(Icons.Rounded.Upload, null); Spacer(Modifier.width(8.dp)); Text("Export backup")
+            }
+        }
+        item {
+            OutlinedButton(onClick = { importer.launch(arrayOf("application/json", "text/*", "application/octet-stream")) }, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
+                Icon(Icons.Rounded.Download, null); Spacer(Modifier.width(8.dp)); Text("Import backup")
+            }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Importing adds what's missing and never deletes anything. Importing the same file twice changes nothing. A workout edited more recently in the file replaces the older copy.", color = Muted, fontSize = 13.sp)
+                Text("Android also backs up IronIndex to your Google account and moves it to a new phone when device backup is on.", color = Muted, fontSize = 13.sp)
+            }
+        }
+    }
+    preview?.let { (backup, plan) ->
+        AlertDialog(onDismissRequest = { vm.importPreview.value = null }, title = { Text(if (plan.isEmpty) "Already up to date" else "Import this backup?") }, text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Exported ${dateLabel(backup.exportedAt)}${backup.appVersion.takeIf { it.isNotBlank() }?.let { " from IronIndex $it" }.orEmpty()}.", color = Muted)
+                Text(plan.summary())
+                if (plan.skippedDrafts > 0) Text("The backup's unfinished workout is skipped because this phone already has workouts.", color = Coral, fontSize = 13.sp)
+                if (plan.phoneHadWorkouts && plan.newSessions + plan.newRoutines > 0) Text("Sessions or routines you deleted on this phone after this backup was made will come back.", color = Muted, fontSize = 13.sp)
+            }
+        }, confirmButton = {
+            if (plan.isEmpty) TextButton(onClick = { vm.importPreview.value = null }) { Text("Done") }
+            else TextButton(onClick = vm::confirmImport) { Text("Import") }
+        }, dismissButton = { if (!plan.isEmpty) TextButton(onClick = { vm.importPreview.value = null }) { Text("Cancel") } })
+    }
+}

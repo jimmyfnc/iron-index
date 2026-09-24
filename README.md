@@ -1,7 +1,7 @@
 # IronIndex
 
 A colorful, standalone Android workout tracker. Built with Kotlin, Jetpack Compose
-and Room. Works offline with no account required. Current version: **0.3.4**.
+and Room. Works offline with no account required. Current version: **0.4.0**.
 
 ## Included
 
@@ -17,6 +17,8 @@ and Room. Works offline with no account required. Current version: **0.3.4**.
 - Single-arm/single-leg logging with independent Left / Right values.
 - Primary/secondary muscles and isolation notes; inline previous-session references.
 - Progress charts, weekly/monthly analytics, machine-specific PRs and L/R comparisons.
+- Backup & restore: export everything to a JSON file and import it on any phone; Android
+  auto backup to your Google account and phone-to-phone transfer.
 
 ## Using the new features
 
@@ -33,6 +35,10 @@ and Room. Works offline with no account required. Current version: **0.3.4**.
   a different one (its own history). To switch machines after completing sets, add another entry.
 - **Reorder**: hold and drag a handle in the order sheet, or use the arrows.
 - **Exercise history**: see prior completed sessions for that person and machine.
+- **Train → Backup**: **Export backup** saves one JSON file wherever you choose (Drive,
+  Downloads, email). **Import backup** shows what will be added before writing anything;
+  it merges by ID, never deletes, and importing the same file twice changes nothing.
+  A home-screen reminder appears when sessions haven't been backed up for two weeks.
 - **Progress**: choose a person and a specific exercise/equipment/side series. Tap chart
   points or open the chart values list. Metric definitions are shown beside the results.
 
@@ -65,6 +71,9 @@ Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
 [Reordering](docs/screenshots/0.2.0/reorder.png) ·
 [Progress](docs/screenshots/0.2.0/progress.png). These previews use synthetic test data.
 
+0.4.0: [Backup & restore](docs/screenshots/0.4.0/backup-screen.png) ·
+[Import preview](docs/screenshots/0.4.0/import-preview.png).
+
 See
 [verification notes](docs/VERIFICATION.md) for coverage and remaining checks.
 
@@ -76,13 +85,14 @@ See
 - `MainActivity.kt`: Compose screens and theme.
 - `WorkoutUi.kt`, `ManagementUi.kt`, `ReorderUi.kt`: logging, catalogs and ordering.
 - `Analytics.kt`, `AnalyticsUi.kt`: metric definitions and progress screens.
+- `Backup.kt`: backup file format, validation and the import merge rules.
 - `app/schemas`: Room schema history; commit schema changes with migrations.
 - `.githooks/`, `scripts/install-hooks.sh`: release hygiene and doc-drift checks.
 - `docs/ROADMAP.md`, `docs/brainstorms/`, `docs/archive/`: backlog, live and shipped designs.
 - `docs/PRODUCT.md`: first-version scope and future Discipline integration.
 
-Data is stored only on this device. Uninstalling clears it; backup export and cloud
-sync are not implemented yet. This is a development build, not a signed store release.
+Data is stored on this device. Uninstalling clears it, so export a backup first (or rely
+on Android auto backup when device backup is on). Cloud sync is not implemented. This is a development build, not a signed store release.
 No Discipline credentials or source files are required. Source lives in the private
 GitHub repo `jimmyfnc/iron-index`; releases are tagged `vX.Y.Z`.
 

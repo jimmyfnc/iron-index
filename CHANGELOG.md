@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 - 2026-09-24
+
+- **Backup & restore** (Train → Backup). Export saves every session, routine, partner, machine and custom exercise to one JSON file wherever you choose: Drive, Downloads, email.
+- Import shows exactly what it will add before writing anything. It merges by ID and never deletes, so importing the same file twice changes nothing. A workout edited more recently in the file replaces the older copy, but an unfinished copy never replaces a finished session.
+- Machines and custom exercises that already exist on the phone are linked, not duplicated, so their history stays in one chart.
+- An unfinished workout in a backup is restored only onto an empty phone, so a draft you discarded can't come back. The preview warns that anything deleted since the backup will return.
+- Damaged, foreign, oversized (15 MB+) or newer-version files are rejected with a clear message and nothing is written. Files saved by desktop editors with a byte-order mark are accepted.
+- Android auto backup is now on for your workouts and settings: it saves to your Google account and moves to a new phone when device backup is enabled.
+- A home-screen reminder appears when finished sessions haven't been backed up for two weeks.
+
 ## 0.3.4 - 2026-09-24
 
 - A damaged or unreadable saved record is skipped instead of crashing the app; everything else still loads.

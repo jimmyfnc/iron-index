@@ -23,6 +23,8 @@ It lives independently of Discipline; neither app needs the other installed.
 - Capture primary/secondary muscles and targeting notes.
 - Browse colored muscle tags and filter by broad groups or specific targets. Search
   includes secondary muscles and custom names; Arms includes Biceps and Triceps.
+- Export a complete backup file and import it on any phone (merge by ID, never delete);
+  Android auto backup covers the database and settings.
 - Compare previous sessions and review progress charts, PRs, volume, frequency,
   muscle counts and matched-side discrepancies.
 
@@ -69,7 +71,7 @@ until a migration and import/export contract have been reviewed.
 
 1. Rest timer and a richer curated exercise library.
    Coach mode: separate concurrent workouts per client, started from any routine.
-2. Backup export/import and larger-history analytics optimization.
+2. Larger-history analytics optimization.
 3. Discipline sync, optional account and cloud backup.
 4. Release signing, store assets, localization, and broader device testing.
 

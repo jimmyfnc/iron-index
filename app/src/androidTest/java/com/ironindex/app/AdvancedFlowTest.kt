@@ -149,6 +149,8 @@ class AdvancedFlowTest {
         compose.onNodeWithText("Different exercise", substring = true).performClick()
         compose.onNodeWithText("Save exercise").performClick()
         compose.waitUntil(10000) { runBlocking { store.workouts.first().first { it.id == workout.id }.exercises.single().exercise.name == "Incline DB press" } }
+        // The library entry is saved just after the workout edit.
+        compose.waitUntil(10000) { runBlocking { store.exercises.first().any { it.name == "Incline DB press" } } }
         val renamed = runBlocking { store.workouts.first() }
         assertNotEquals("bench-press", renamed.first { it.id == workout.id }.exercises.single().exercise.id)
         assertEquals("Bench press", renamed.first { it.id == old.id }.exercises.single().exercise.name)

@@ -112,6 +112,7 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
             else if (profile != null) PartnerProfile(profile, workouts, unit, vm::savePartner,
                 openSession = { vm.openSession(it, profile.id) },
                 openProgress = { progressPerson = profile.id; progressReturn = profile.id; manager = null; tab = 3 }) { manager = "partners" }
+            else if (manager == "backup") BackupScreen(workouts, partners, vm) { manager = null }
             else if (manager == "equipment") EquipmentManager(equipment, { vm.saveEquipment(it) }) { manager = null }
             else if (tab == 3) AnalyticsScreen(workouts, partners, unit, progressPerson) { progressPerson = it }
             else LazyColumn(
@@ -135,6 +136,21 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(onClick = { manager = "partners" }, modifier = Modifier.weight(1f)) { Text("Partners") }
                                 OutlinedButton(onClick = { manager = "equipment" }, modifier = Modifier.weight(1f)) { Text("Equipment") }
+                                OutlinedButton(onClick = { manager = "backup" }, modifier = Modifier.weight(1f)) { Text("Backup") }
+                            }
+                        }
+                        item {
+                            val backedUpUntil by vm.backedUpUntil.collectAsStateWithLifecycle()
+                            val unsaved = history.count { (it.finishedAt ?: it.startedAt) > backedUpUntil }
+                            val stale = if (backedUpUntil > 0) System.currentTimeMillis() - backedUpUntil > 14L * 24 * 60 * 60 * 1000 else unsaved >= 3
+                            if (unsaved > 0 && stale) Surface(onClick = { manager = "backup" }, color = Panel, shape = RoundedCornerShape(20.dp)) {
+                                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Icon(Icons.Rounded.CloudUpload, null, tint = Coral)
+                                    Column(Modifier.weight(1f)) {
+                                        Text("Back up your training", fontWeight = FontWeight.Bold)
+                                        Text("${count(unsaved, "session")} not in a backup yet. Export takes a few seconds.", color = Muted, fontSize = 13.sp)
+                                    }
+                                }
                             }
                         }
                         item {
