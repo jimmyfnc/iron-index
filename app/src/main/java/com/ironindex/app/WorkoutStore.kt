@@ -121,16 +121,53 @@ class WorkoutStore(context: Context, databaseName: String = "iron-index.db") {
             if (!replaceDraft && (source == null || existing.exercises.isNotEmpty())) return@withLock existing.id
             dao.delete(existing.id)
         }
-        val workout = source?.freshCopy(false) ?: Workout(name = "Freestyle workout", unit = unit)
+        // Routines keep an equipment snapshot; refresh it so today's session uses the current bar/sled weight,
+        // converting prefilled targets so each keeps the total it was written with.
+        val catalog = if (source == null) emptyMap() else dao.allEquipment().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Equipment>(it) }.associateBy { it.id }
+        val workout = source?.freshCopy(false)?.let { w -> w.copy(exercises = w.exercises.map { e ->
+            e.equipmentId?.let(catalog::get)?.let { current -> e.rebasedTo(current, w.unit) } ?: e
+        }) } ?: Workout(name = "Freestyle workout", unit = unit)
         write(workout)
         workout.id
     }
     suspend fun saveExercise(exercise: Exercise) = dao.putExercise(ExerciseRow(exercise.id, json.encodeToString(exercise)))
-    suspend fun saveEquipment(value: Equipment): Equipment = mutex.withLock {
-        val existing = dao.allEquipment().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Equipment>(it) }
-            .firstOrNull { it.identity == value.identity && it.id != value.id }
-        val saved = existing?.copy(archived = false) ?: value
+    suspend fun saveEquipment(value: Equipment): Equipment = mutex.withLock { putEquipment(value) }
+
+    private suspend fun putEquipment(value: Equipment): Equipment {
+        val all = dao.allEquipment().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Equipment>(it) }
+        val existing = all.firstOrNull { it.identity == value.identity && it.id != value.id }
+        // Editing a machine into another one's exact name would silently merge them; refuse instead.
+        require(existing == null || all.none { it.id == value.id }) { "Another machine already has this type, brand, model and gym." }
+        // Re-adding a machine that already exists reuses it, taking any starting weight given this time.
+        val saved = existing?.let { e -> e.copy(archived = false, baseWeight = value.baseWeight ?: e.baseWeight,
+            baseUnit = if (value.baseWeight != null) value.baseUnit else e.baseUnit, loadMode = if (value.baseWeight != null) value.loadMode else e.loadMode) } ?: value
         dao.putEquipment(EquipmentRow(saved.id, json.encodeToString(saved)))
+        return saved
+    }
+
+    /**
+     * Saves an edited machine and carries it into workouts that use it. Routines and the workout in progress
+     * always pick up the change (typed numbers adjusted to keep their totals, unless [reinterpretPast]).
+     * Finished sessions keep their snapshot, unless [reinterpretPast]: the lifter said the numbers already
+     * typed were plates only, so every log on this machine should count the new starting weight.
+     */
+    suspend fun applyEquipment(value: Equipment, reinterpretPast: Boolean): Equipment = mutex.withLock {
+        val saved = putEquipment(value)
+        val now = System.currentTimeMillis()
+        db.withTransaction {
+            dao.all().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Workout>(it) }.forEach { w ->
+                val finished = w.finishedAt != null && !w.isTemplate
+                val updated = w.copy(exercises = w.exercises.map { e ->
+                    when {
+                        e.equipmentKey() != saved.id -> e
+                        reinterpretPast -> e.copy(equipmentSnapshot = saved)
+                        finished -> e
+                        else -> e.rebasedTo(saved, w.unit)
+                    }
+                })
+                if (updated != w) write(updated.copy(updatedAt = now))
+            }
+        }
         saved
     }
     private class Snapshot(val workouts: List<Workout>, val exercises: List<Exercise>, val equipment: List<Equipment>, val partners: List<Partner>) {

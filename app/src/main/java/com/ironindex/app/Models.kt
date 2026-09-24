@@ -33,6 +33,10 @@ data class Equipment(
     val model: String = "",
     val location: String = "",
     val archived: Boolean = false,
+    /** Bar, sled or carriage weight before plates, in [baseUnit]. Null for dumbbells, cables, etc. */
+    val baseWeight: Double? = null,
+    val baseUnit: String = "lb",
+    val loadMode: LoadMode = LoadMode.TOTAL,
 ) {
     val label get() = listOf(type, brand, model, location).filter { it.isNotBlank() }.joinToString(" · ")
     val identity get() = listOf(type, brand, model, location).joinToString("|") { it.trim().lowercase(java.util.Locale.ROOT) }
@@ -175,7 +179,7 @@ data class Workout(
     val volume get() = volumeFor(null)
     fun completedSetsFor(participantId: String?) = exercises.sumOf { e -> e.sets.count { it.counts && it.participantId == participantId } }
     fun volumeFor(participantId: String?) = exercises.sumOf { e -> e.sets.filter { it.counts && it.participantId == participantId }.sumOf {
-        (it.weight.toWeightOrNull() ?: 0.0) * (it.reps.toIntOrNull() ?: 0)
+        e.totalLoad(it.weight.toWeightOrNull() ?: 0.0, unit) * (it.reps.toIntOrNull() ?: 0)
     } }
 
     /** The unit can change until a weight is entered, so no value is ever reinterpreted. */

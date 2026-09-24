@@ -25,6 +25,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 
 @Composable
 fun ChoiceField(label: String, selected: String, choices: List<Pair<String, String>>, onSelect: (String) -> Unit) {
@@ -151,8 +153,12 @@ private fun ProfileStat(value: String, label: String, modifier: Modifier) {
 }
 
 @Composable
-fun EquipmentManager(equipment: List<Equipment>, save: (Equipment) -> Unit, back: () -> Unit) {
+fun EquipmentManager(equipment: List<Equipment>, workouts: List<Workout>, save: (Equipment) -> Unit, update: (Equipment, Boolean) -> Unit, back: () -> Unit) {
     var adding by rememberSaveable { mutableStateOf(false) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    // An edit that changes what typed numbers mean, waiting for "how were past weights typed?".
+    var pending by remember { mutableStateOf<Equipment?>(null) }
+    fun uses(id: String) = workouts.count { w -> w.exercises.any { e -> e.equipmentKey() == id && e.sets.any { it.weight.isNotBlank() } } }
     var showArchived by rememberSaveable { mutableStateOf(false) }
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { ManagerHeading("Equipment library", "Brand + model + optional gym or nickname. Your workout history remembers the equipment you used.", back) }
@@ -163,13 +169,34 @@ fun EquipmentManager(equipment: List<Equipment>, save: (Equipment) -> Unit, back
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(e.type.ifBlank { "Equipment" }, fontSize = 21.sp, fontWeight = FontWeight.Bold)
                     Text(listOf(e.brand, e.model, e.location).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Generic equipment" })
-                    TextButton(onClick = { save(e.copy(archived = !e.archived)) }) { Text(if (e.archived) "Restore" else "Archive") }
+                    e.baseLabel?.let { Text(it.replaceFirstChar { c -> c.uppercase() }, color = Lime, fontSize = 13.sp) }
+                    Row {
+                        TextButton(onClick = { editingId = e.id }) { Text("Edit") }
+                        TextButton(onClick = { update(e.copy(archived = !e.archived), false) }) { Text(if (e.archived) "Restore" else "Archive") }
+                    }
                 }
             }
         }
-        item { Text("To use a different machine, create a new equipment profile. Archiving keeps existing sessions and comparisons intact.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("To use a different machine, create a new equipment profile. Archiving keeps existing sessions and comparisons intact. Changing a starting weight applies to new sessions; past sessions keep what they were logged with.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
-    if (adding) EquipmentEditor({ adding = false }) { save(it); adding = false }
+    if (adding) EquipmentEditor(null, { adding = false }) { save(it); adding = false }
+    editingId?.let { id -> equipment.find { it.id == id }?.let { e -> EquipmentEditor(e, { editingId = null }) { edited ->
+        editingId = null
+        if (loadMeaningChanged(e, edited) && uses(e.id) > 0) pending = edited else update(edited, false)
+    } } }
+    pending?.let { edited ->
+        val base = edited.baseIn(edited.baseUnit)
+        AlertDialog(onDismissRequest = { pending = null }, title = { Text("How were past weights typed?") }, text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("${count(uses(edited.id), "session or routine")} already ${if (uses(edited.id) == 1) "has" else "have"} weights on ${edited.type}.")
+                if (edited.loadMode == LoadMode.ADDED && base != null)
+                    Text("Plates only: count the ${weightText(base)} ${edited.baseUnit} ${baseName(edited.type)} in them too, so past totals and PRs match from now on.", color = Muted, fontSize = 13.sp)
+                else Text("As totals: the numbers you typed were already the full weight.", color = Muted, fontSize = 13.sp)
+                Text("Keep totals: past sessions stay exactly as logged; routines and today's workout adjust their numbers to keep the same totals.", color = Muted, fontSize = 13.sp)
+            }
+        }, confirmButton = { TextButton(onClick = { update(edited, true); pending = null }) { Text(if (edited.loadMode == LoadMode.ADDED) "Plates only" else "As totals") } },
+            dismissButton = { TextButton(onClick = { update(edited, false); pending = null }) { Text("Keep totals") } })
+    }
 }
 
 @Composable
@@ -182,19 +209,50 @@ private fun ManagerHeading(title: String, body: String, back: () -> Unit) {
 }
 
 @Composable
-fun EquipmentEditor(dismiss: () -> Unit, save: (Equipment) -> Unit) {
-    var type by rememberSaveable { mutableStateOf("") }
-    var brand by rememberSaveable { mutableStateOf("") }
-    var model by rememberSaveable { mutableStateOf("") }
-    var location by rememberSaveable { mutableStateOf("") }
-    AlertDialog(onDismissRequest = dismiss, title = { Text("Add equipment") }, text = {
-        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+fun EquipmentEditor(initial: Equipment?, dismiss: () -> Unit, save: (Equipment) -> Unit) {
+    val key = initial?.id ?: "new"
+    var type by rememberSaveable(key) { mutableStateOf(initial?.type.orEmpty()) }
+    var brand by rememberSaveable(key) { mutableStateOf(initial?.brand.orEmpty()) }
+    var model by rememberSaveable(key) { mutableStateOf(initial?.model.orEmpty()) }
+    var location by rememberSaveable(key) { mutableStateOf(initial?.location.orEmpty()) }
+    var base by rememberSaveable(key) { mutableStateOf(initial?.baseWeight?.let(::weightText).orEmpty()) }
+    var baseUnit by rememberSaveable(key) { mutableStateOf(initial?.baseUnit ?: "lb") }
+    // Null until chosen, so the suggestion follows the type (leg press → plates only) until the lifter picks.
+    var mode by rememberSaveable(key) { mutableStateOf(initial?.takeIf { it.baseWeight != null }?.loadMode?.name) }
+    val effectiveMode = mode?.let(LoadMode::valueOf) ?: suggestedLoadMode(type)
+    val baseValue = base.toWeightOrNull()?.takeIf { it > 0 }
+    AlertDialog(onDismissRequest = dismiss, title = { Text(if (initial == null) "Add equipment" else "Edit equipment") }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()).imePadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(type, { type = it }, label = { Text("Equipment type *") }, placeholder = { Text("Incline press machine") })
             OutlinedTextField(brand, { brand = it }, label = { Text("Brand") }, placeholder = { Text("Hammer Strength") })
             OutlinedTextField(model, { model = it }, label = { Text("Model") }, placeholder = { Text("ISO-Lateral Incline Press") })
             OutlinedTextField(location, { location = it }, label = { Text("Gym / nickname (optional)") })
+            Text("Starting weight", fontWeight = FontWeight.Bold)
+            Text("The bar, sled or carriage before plates. Leave blank for dumbbells and cables.", style = MaterialTheme.typography.bodySmall, color = Muted)
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(45.0 to "lb", 55.0 to "lb", 35.0 to "lb", 25.0 to "lb", 20.0 to "kg", 15.0 to "kg").forEach { (w, u) ->
+                    FilterChip(baseValue == w && baseUnit == u, { base = weightText(w); baseUnit = u }, label = { Text("${weightText(w)} $u") })
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(base, { base = it.replace(',', '.') }, label = { Text("Starting weight") }, singleLine = true, modifier = Modifier.weight(1f),
+                    isError = base.isNotBlank() && base.toWeightOrNull() == null, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                listOf("lb", "kg").forEach { u -> FilterChip(baseUnit == u, { baseUnit = u }, label = { Text(u) }, modifier = Modifier.semantics { contentDescription = "Starting weight in $u" }) }
+            }
+            if (baseValue != null) Column(Modifier.selectableGroup()) {
+                Text("How do you log it?", fontWeight = FontWeight.Bold)
+                listOf(LoadMode.TOTAL to "Total weight · type 225 for a bar with two plates a side",
+                    LoadMode.ADDED to "Plates only · type what you load; the ${weightText(baseValue)} $baseUnit ${baseName(type)} is added for totals").forEach { (value, label) ->
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(effectiveMode == value, role = Role.RadioButton) { mode = value.name }, verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(effectiveMode == value, onClick = null); Spacer(Modifier.width(8.dp)); Text(label)
+                    }
+                }
+            }
         }
-    }, confirmButton = { TextButton(onClick = { save(Equipment(type = type.trim(), brand = brand.trim(), model = model.trim(), location = location.trim())) }, enabled = type.isNotBlank()) { Text("Save equipment") } },
+    }, confirmButton = { TextButton(enabled = type.isNotBlank() && (base.isBlank() || baseValue != null), onClick = {
+        save((initial ?: Equipment(type = "")).copy(type = type.trim(), brand = brand.trim(), model = model.trim(), location = location.trim(),
+            baseWeight = baseValue, baseUnit = baseUnit, loadMode = if (baseValue == null) LoadMode.TOTAL else effectiveMode))
+    }) { Text("Save equipment") } },
         dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } })
 }
 
@@ -212,13 +270,14 @@ fun EquipmentPicker(equipment: List<Equipment>, dismiss: () -> Unit, exerciseNam
                 items(equipment.filter { !it.archived && it.label.contains(query, true) }.sortedBy { it.id !in usedIds }, key = { it.id }) { e ->
                     TextButton(onClick = { pick(e) }, modifier = Modifier.fillMaxWidth()) { Column(Modifier.fillMaxWidth()) {
                         Text(e.label)
+                        e.baseLabel?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = Lime) }
                         if (e.id in usedIds) Text("Used with this exercise", style = MaterialTheme.typography.labelSmall)
                     } }
                 }
             }
         }
     }, confirmButton = {}, dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } })
-    if (adding) EquipmentEditor({ adding = false }) { pick(it) }
+    if (adding) EquipmentEditor(null, { adding = false }) { pick(it) }
 }
 
 @Composable

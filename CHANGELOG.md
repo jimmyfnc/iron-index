@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0 - 2026-09-24
+
+- **Starting weights on equipment.** Give a bar, sled or carriage its starting weight (quick picks: 45, 55, 35, 25 lb; 20, 15 kg). Equipment can now be edited, not just added or archived.
+- **Choose how you log it.** *Total weight* (default for bars): type 225 and the set shows "45 bar + 90 per side (45 + 45)". *Plates only* (suggested for leg press, hack squat, Smith, sled machines): type 180 and it shows "+167 sled = 347 lb total".
+- Charts, PRs, volume, estimated 1RM and history use the total, so your numbers mean the same thing whichever way you log. What you typed is kept.
+- Changing a machine's starting weight or logging style after you've used it asks how past weights were typed. *Plates only* counts the sled in them too; *Keep totals* leaves history exactly as logged. Routines and the workout in progress adjust their numbers to keep the same totals.
+- Starting a routine picks up the machine's current setup, and backups keep each session's load settings.
+
 ## 0.5.0 - 2026-09-24
 
 - **Edit finished sessions.** Open a session from History and tap **Edit session** to fix a mistyped weight, check a set you forgot, add or remove sets and exercises, or move it to the right day with **Change date** (time of day and duration kept, never in the future).

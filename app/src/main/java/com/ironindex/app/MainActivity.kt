@@ -113,7 +113,7 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
                 openSession = { vm.openSession(it, profile.id) },
                 openProgress = { progressPerson = profile.id; progressReturn = profile.id; manager = null; tab = 3 }) { manager = "partners" }
             else if (manager == "backup") BackupScreen(workouts, partners, vm) { manager = null }
-            else if (manager == "equipment") EquipmentManager(equipment, { vm.saveEquipment(it) }) { manager = null }
+            else if (manager == "equipment") EquipmentManager(equipment, workouts, { vm.saveEquipment(it) }, vm::updateEquipment) { manager = null }
             else if (tab == 3) AnalyticsScreen(workouts, partners, unit, progressPerson) { progressPerson = it }
             else LazyColumn(
                 modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(24.dp),

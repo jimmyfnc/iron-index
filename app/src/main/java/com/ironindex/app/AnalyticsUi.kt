@@ -183,7 +183,11 @@ fun ExerciseHistoryDialog(logs: List<LoggedSet>, dismiss: () -> Unit) {
             items(sessions, key = { it.first().workout.id }) { values ->
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("${dateLabel(values.first().workout.startedAt)} · ${values.first().workout.name}", fontWeight = FontWeight.Bold)
-                    values.forEach { log -> Text("${if (log.set.side == Side.BOTH) "" else log.set.side.name.lowercase() + " · "}${log.set.weight} ${log.workout.unit} × ${log.set.reps}") }
+                    values.forEach { log ->
+                        val total = log.entry.totalLoad(log.set.weight.toWeightOrNull() ?: 0.0, log.workout.unit)
+                        val plates = log.set.weight.toWeightOrNull()?.takeIf { kotlin.math.abs(it - total) > 1e-6 }
+                        Text("${if (log.set.side == Side.BOTH) "" else log.set.side.name.lowercase() + " · "}${weightText(total)} ${log.workout.unit} × ${log.set.reps}${plates?.let { " (${weightText(it)} plates)" }.orEmpty()}")
+                    }
                     HorizontalDivider()
                 }
             }

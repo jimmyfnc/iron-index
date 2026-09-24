@@ -1,7 +1,7 @@
 # IronIndex
 
 A colorful, standalone Android workout tracker. Built with Kotlin, Jetpack Compose
-and Room. Works offline with no account required. Current version: **0.5.0**.
+and Room. Works offline with no account required. Current version: **0.6.0**.
 
 ## Included
 
@@ -12,7 +12,7 @@ and Room. Works offline with no account required. Current version: **0.5.0**.
 - Per-workout lb/kg units (switchable until a weight is entered; default follows your region), comma or dot decimals, and a starter exercise library.
 - Dark ink, lime, lavender and coral interface.
 - Drag-and-drop exercise ordering via Reorder, with accessible up/down alternatives.
-- Equipment library: separate brand, model, and optional gym/nickname.
+- Equipment library: separate brand, model, optional gym/nickname, and a starting weight (bar, sled) with plate math or plates-only logging.
 - Partner Manager with goals, notes, history and stats; independent sets and per-person exercise lists.
 - Single-arm/single-leg logging with independent Left / Right values.
 - Primary/secondary muscles and isolation notes; inline previous-session references.
@@ -22,8 +22,12 @@ and Room. Works offline with no account required. Current version: **0.5.0**.
 
 ## Using the new features
 
-- **Train → Equipment**: create machine profiles. Distinct brand/model/location profiles
-  get separate histories. Archive retired equipment without removing past sessions.
+- **Train → Equipment**: create and edit machine profiles. Distinct brand/model/location
+  profiles get separate histories. Archive retired equipment without removing past sessions.
+  Add a **starting weight** (45 lb bar, 55 lb power bar, 167 lb leg press sled) and choose
+  how you log it: **Total weight** (type 225; the set shows "45 bar + 90 per side") or
+  **Plates only** (type 180; it shows "+167 sled = 347 lb total"). Charts, PRs and volume
+  always use totals. Changing it on a machine you've used asks how past weights were typed.
 - **Train → Partners**: add profiles with an optional goal and notes. **History & stats**
   shows a partner's sessions, records and totals, and links to their Progress charts.
 - **Inside a workout**: **Partners** attaches people and optionally enables their sets;
@@ -75,6 +79,10 @@ Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
 [Reordering](docs/screenshots/0.2.0/reorder.png) ·
 [Progress](docs/screenshots/0.2.0/progress.png). These previews use synthetic test data.
 
+0.6.0: [Starting weight](docs/screenshots/0.6.0/starting-weight.png) ·
+[Plate math](docs/screenshots/0.6.0/plate-math.png) ·
+[Past weights](docs/screenshots/0.6.0/past-weights.png).
+
 0.5.0: [Editing a session](docs/screenshots/0.5.0/editing-session.png) ·
 [Change date](docs/screenshots/0.5.0/change-date.png).
 
@@ -93,6 +101,7 @@ See
 - `WorkoutUi.kt`, `ManagementUi.kt`, `ReorderUi.kt`: logging, catalogs and ordering.
 - `Analytics.kt`, `AnalyticsUi.kt`: metric definitions and progress screens.
 - `Backup.kt`: backup file format, validation and the import merge rules.
+- `Load.kt`: starting weights, totals, plate math and re-basing typed weights.
 - `app/schemas`: Room schema history; commit schema changes with migrations.
 - `.githooks/`, `scripts/install-hooks.sh`: release hygiene and doc-drift checks.
 - `docs/ROADMAP.md`, `docs/brainstorms/`, `docs/archive/`: backlog, live and shipped designs.

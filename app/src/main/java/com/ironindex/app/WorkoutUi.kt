@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -177,10 +178,19 @@ private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, readOnly: Boo
                     }
                 }
             }
-            if (!readOnly) Text(if (workout.isTemplate) "Optional targets prefill your next session." else if (entry.exercise.mode != ExerciseMode.BILATERAL) "Load per side · 0 for bodyweight" else "Weight as logged · 0 for bodyweight", color = Muted, fontSize = 12.sp)
+            val plateOnly = entry.equipmentProfile()?.takeIf { it.baseIn(workout.unit) != null && it.loadMode == LoadMode.ADDED }
+            val perSide = if (entry.exercise.mode != ExerciseMode.BILATERAL) "Per side · " else ""
+            if (!readOnly) Text(when {
+                workout.isTemplate -> "Optional targets prefill your next session."
+                plateOnly != null -> "${perSide}Plates only · the ${weightText(plateOnly.baseIn(workout.unit)!!)} ${workout.unit} ${baseName(plateOnly.type)} is added for totals"
+                entry.equipmentProfile()?.baseIn(workout.unit) != null -> entry.equipmentProfile()!!.let { "${perSide}Total weight · the ${weightText(it.baseIn(workout.unit)!!)} ${workout.unit} ${baseName(it.type)} is included" }
+                entry.exercise.mode != ExerciseMode.BILATERAL -> "Load per side · 0 for bodyweight"
+                else -> "Weight as logged · 0 for bodyweight"
+            }, color = Muted, fontSize = 12.sp)
             sets.forEach { set ->
                 key(set.id) {
-                    SetRow(entry.exercise.name, groups.indexOf(set.groupId) + 1, set, workout.unit, workout.isTemplate, readOnly,
+                    SetRow(entry.exercise.name, groups.indexOf(set.groupId) + 1, set, workout.unit, workout.isTemplate, readOnly, hint = { typed -> loadHint(entry, typed, workout.unit) },
+                        plateOnly = plateOnly != null,
                         onChange = { transform -> update { e -> e.copy(sets = e.sets.map { if (it.id == set.id) transform(it) else it }) } },
                         onDelete = { update { e -> e.copy(sets = e.sets.filterNot { it.id == set.id }) } })
                 }
@@ -226,7 +236,8 @@ private fun SkippedExerciseRow(entry: WorkoutExercise, personName: String?, read
 }
 
 @Composable
-private fun SetRow(exerciseName: String, number: Int, set: SetEntry, unit: String, template: Boolean, readOnly: Boolean, onChange: ((SetEntry) -> SetEntry) -> Unit, onDelete: () -> Unit) {
+private fun SetRow(exerciseName: String, number: Int, set: SetEntry, unit: String, template: Boolean, readOnly: Boolean, hint: (String) -> String? = { null },
+                   plateOnly: Boolean = false, onChange: ((SetEntry) -> SetEntry) -> Unit, onDelete: () -> Unit) {
     var deleting by rememberSaveable { mutableStateOf(false) }
     var weight by rememberSaveable(set.id) { mutableStateOf(set.weight) }
     var reps by rememberSaveable(set.id) { mutableStateOf(set.reps) }
@@ -243,9 +254,9 @@ private fun SetRow(exerciseName: String, number: Int, set: SetEntry, unit: Strin
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (set.side == Side.BOTH) Text("$number", color = if (set.counts) Lime else Muted, modifier = Modifier.width(20.dp))
             OutlinedTextField(value = weight, onValueChange = { raw -> val value = raw.replace(',', '.'); weight = value; onChange { it.copy(weight = value) } },
-                label = { Text(unit) }, singleLine = true, readOnly = readOnly, isError = weight.isNotBlank() && weight.toWeightOrNull() == null,
+                label = { Text(if (plateOnly) "plates $unit" else unit) }, singleLine = true, readOnly = readOnly, isError = weight.isNotBlank() && weight.toWeightOrNull() == null,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.weight(1f).onFocusChanged { weightFocused = it.isFocused }.semantics { contentDescription = "$exerciseName set $number$suffix weight in $unit" })
+                modifier = Modifier.weight(1f).onFocusChanged { weightFocused = it.isFocused }.semantics { contentDescription = "$exerciseName set $number$suffix ${if (plateOnly) "plates" else "weight"} in $unit" })
             OutlinedTextField(value = reps, onValueChange = { value -> reps = value; onChange { it.copy(reps = value) } },
                 label = { Text("reps") }, singleLine = true, readOnly = readOnly, isError = reps.isNotBlank() && reps.toIntOrNull()?.let { it in 1..9999 } != true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(12.dp),
@@ -254,6 +265,8 @@ private fun SetRow(exerciseName: String, number: Int, set: SetEntry, unit: Strin
                 onCheckedChange = { checked -> onChange { it.copy(complete = checked && it.valid()) } }, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = "Complete set $number$suffix" })
             if (!readOnly) IconButton(onClick = { deleting = true }) { Icon(Icons.Rounded.Close, "Delete set $number$suffix", tint = Muted) }
         }
+        hint(weight)?.let { Text(it, color = Lavender, fontSize = 12.sp, modifier = Modifier.padding(start = if (set.side == Side.BOTH) 28.dp else 0.dp)
+            .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }) }
         if ((weight.isNotBlank() && weight.toWeightOrNull() == null) || (reps.isNotBlank() && reps.toIntOrNull()?.let { it in 1..9999 } != true)) Text("Use weight 0–99,999 and whole reps 1–9,999.", color = Coral, fontSize = 12.sp)
     }
     if (deleting) ConfirmDialog("Remove set $number$suffix?", "Only this entry is removed. Other sides and people stay saved.", "Remove", { deleting = false }) { onDelete(); deleting = false }

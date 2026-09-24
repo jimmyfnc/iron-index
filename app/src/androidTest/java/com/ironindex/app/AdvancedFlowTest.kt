@@ -159,6 +159,37 @@ class AdvancedFlowTest {
         assertTrue(library.any { it.name == "Incline DB press" && it.id != "bench-press" })
     }
 
+    @Test fun equipmentStartingWeightAndPlatesOnlyLogging() {
+        val workout = Workout(name = "Leg day", unit = "lb")
+        runBlocking { store.save(workout) }
+        launch(workout)
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.onNodeWithText("Equipment").performClick()
+        awaitText("Equipment library")
+        compose.onNodeWithText("Add equipment").performClick()
+        compose.onNodeWithText("Equipment type *").performTextInput("Leg press")
+        compose.onNodeWithText("Brand").performTextInput("Hammer Strength")
+        compose.onNode(hasText("Starting weight") and hasSetTextAction()).performScrollTo().performTextInput("167")
+        // Leg press suggests plates only.
+        compose.onNodeWithText("Plates only", substring = true).performScrollTo().assertIsSelected()
+        compose.onNodeWithText("Save equipment").performClick()
+        compose.waitUntil(10000) { runBlocking { store.equipment.first().any { it.type == "Leg press" && it.baseWeight == 167.0 && it.loadMode == LoadMode.ADDED } } }
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Starts at 167 lb · log plates only"))
+        val machine = runBlocking { store.equipment.first().single { it.type == "Leg press" } }
+        runBlocking { store.edit(workout.id) { it.copy(exercises = listOf(it.newEntry(Exercise(name = "Leg press"), machine))) } }
+        androidx.test.espresso.Espresso.pressBack() // the header's arrow has scrolled out of view
+        compose.runOnIdle { vm.opened.value = workout.id }
+        awaitText("Plates only · the 167 lb sled is added for totals")
+        compose.onNodeWithContentDescription("Leg press set 1 plates in lb").performTextInput("180")
+        awaitText("+167 sled = 347 lb total")
+        compose.onNodeWithContentDescription("Leg press set 1 reps").performTextInput("10")
+        compose.onNodeWithContentDescription("Complete set 1").performClick()
+        compose.waitUntil(10000) { runBlocking { store.workouts.first().single().completedSets == 1 } }
+        val saved = runBlocking { store.workouts.first().single() }
+        assertEquals("180", saved.exercises.single().sets.single().weight) // what was typed is kept
+        assertEquals(3470.0, saved.volume, 1e-9)                             // totals include the sled
+    }
+
     @Test fun longPressDragReordersAndPreservesSetValues() {
         val a = WorkoutExercise(exercise = Exercise(name = "Alpha press"), sets = listOf(SetEntry(weight = "25", reps = "8")))
         val b = WorkoutExercise(exercise = Exercise(name = "Beta row"))

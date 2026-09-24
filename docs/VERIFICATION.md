@@ -1,5 +1,13 @@
 # IronIndex verification
 
+## 0.6.0 - 2026-09-24
+
+- assembleDebug, all 60 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 24 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned. The phone was separately upgraded to the finished 0.5.0 build from a clean v0.5.0 worktree at the owner's request; no tests ran on it.
+- Unit coverage (LoadTest): plates-only totals in volume, analytics and PRs; total mode and plain equipment unchanged; lb/kg conversion; hint wording including plate breakdown, below-bar and unilateral cases; type-based suggestions; legacy equipment JSON; re-basing keeps every target's total; unusable starting weights ignored; import keeps logged load settings when linking to a phone machine.
+- Connected coverage: the editor suggests plates only for a leg press and saves 167 lb; logging 180 shows "+167 sled = 347 lb total", stores "180", and counts 3,470 lb volume. Store tests: Keep totals leaves history and converts routines (347 → 180); Plates only counts the sled in past logs; starting a routine converts older targets; editing a machine into another's name is refused; exercise details never rewrite the catalog from a snapshot.
+- Manual emulator run: 45 lb bar preset and plate math for a 225 bench ("45 bar + 90 per side (45 + 45)"); a leg press logged at 180, then a 167 lb sled added in the editor; the "How were past weights typed?" prompt appeared; Plates only made the past session 3,470 lb.
+- A code review found a stale snapshot overwriting the catalog, routine targets being reinterpreted, backup import changing load modes, rename collisions merging machines, drafts not picking up edits, false PRs after adding a starting weight, a possible crash on zero starting weights, per-side wording and accessibility. All fixed with tests before release.
+
 ## 0.5.0 - 2026-09-24
 
 - assembleDebug, all 50 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 18 connected tests passed on emulator-5554, with ANDROID_SERIAL pinned while the physical phone was attached (the phone stayed on 0.4.0 and was untouched). The emulator was cold-restarted after one "System has crashed" run abort (a host/emulator issue; a clean rerun passed).

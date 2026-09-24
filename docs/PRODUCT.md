@@ -16,7 +16,8 @@ It lives independently of Discipline; neither app needs the other installed.
 - Automatically persist partial input and unfinished sessions on the device.
 - Use lb or kg; each routine/session retains its own unit.
 - Reorder exercises with drag handles in a compact sheet.
-- Maintain equipment profiles with brand, model and optional gym/nickname.
+- Maintain equipment profiles with brand, model, optional gym/nickname and a starting weight
+  (bar/sled), logged as total weight with plate math or as plates only; analytics use totals.
 - Attach local partners and independently log each person's sets. Exercises mirror to
   everyone by default; each person can skip entries or get partner-only exercises.
 - Keep partner goals and notes, and review each partner's sessions, records and progress.

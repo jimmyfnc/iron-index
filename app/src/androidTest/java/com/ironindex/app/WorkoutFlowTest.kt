@@ -68,6 +68,8 @@ class WorkoutFlowTest {
                 .also { compose.onNodeWithText("Add exercise").performClick() }
             awaitText("Find your next move")
             compose.onNodeWithText("Search exercises or muscles").performTextInput("Biceps")
+            androidx.test.espresso.Espresso.closeSoftKeyboard() // the IME animating closed can swallow the tap
+            compose.waitForIdle()
             compose.onNode(hasText("Biceps curl") and hasClickAction()).performClick()
             awaitText("Equipment for Biceps curl")
             compose.onNodeWithText("Search type, brand, model or gym").performTextInput(equipment)

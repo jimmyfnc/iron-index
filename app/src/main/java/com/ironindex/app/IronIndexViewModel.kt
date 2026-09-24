@@ -176,8 +176,16 @@ class IronIndexViewModel @JvmOverloads constructor(application: Application, pri
     }
     fun attachPartner(workoutId: String, partner: Partner, track: Boolean) = edit(workoutId) { it.attachPartner(partner, track) }
     fun detachPartner(workoutId: String, partnerId: String) = edit(workoutId) { it.detachPartner(partnerId) }
+    /** Saves an edited catalog machine and carries it into routines, the workout in progress and (if asked) past logs. */
+    fun updateEquipment(equipment: Equipment, reinterpretPast: Boolean) = run {
+        require(equipment.type.isNotBlank()) { "Enter the equipment type." }
+        store.applyEquipment(equipment, reinterpretPast)
+    }
     fun editDetails(workoutId: String, entryId: String, exercise: Exercise, equipment: Equipment?) = run {
-        val saved = equipment?.let { store.saveEquipment(it) }
+        val entry = workouts.value.find { it.id == workoutId }?.exercises?.find { it.id == entryId }
+        // Unchanged equipment keeps this session's own snapshot; only a newly picked machine goes through the catalog.
+        val saved = if (equipment != null && entry != null && equipment.id == entry.equipmentKey()) entry.equipmentSnapshot ?: equipment
+            else equipment?.let { store.saveEquipment(it) }
         val normalized = exercise.copy(equipment = "", brand = "", defaultEquipmentId = saved?.id)
         store.edit(workoutId) { w -> w.copy(exercises = w.exercises.map { e ->
             if (e.id != entryId) e else {

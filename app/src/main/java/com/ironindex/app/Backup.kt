@@ -93,7 +93,9 @@ fun planImport(backup: Backup, existingWorkouts: List<Workout>, existingExercise
     fun Exercise.remapped() = copy(id = exerciseMap[id] ?: id, defaultEquipmentId = defaultEquipmentId?.let { equipmentMap[it]?.id ?: it })
     fun Workout.remapped() = if (equipmentMap.isEmpty() && exerciseMap.isEmpty()) this else copy(exercises = exercises.map { e ->
         val local = e.equipmentId?.let(equipmentMap::get)
-        e.copy(exercise = e.exercise.remapped(), equipmentId = local?.id ?: e.equipmentId, equipmentSnapshot = local ?: e.equipmentSnapshot)
+        // Take the phone's id and label, but keep the load settings these sets were logged with so totals don't change.
+        val snapshot = local?.let { l -> e.equipmentSnapshot.let { old -> l.copy(baseWeight = old?.baseWeight, baseUnit = old?.baseUnit ?: "lb", loadMode = old?.loadMode ?: LoadMode.TOTAL) } }
+        e.copy(exercise = e.exercise.remapped(), equipmentId = local?.id ?: e.equipmentId, equipmentSnapshot = snapshot ?: e.equipmentSnapshot)
     })
 
     var newSessions = 0; var newRoutines = 0; var updated = 0; var unchanged = 0; var skippedDrafts = 0
