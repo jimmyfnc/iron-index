@@ -1,6 +1,9 @@
 package com.ironindex.app
 
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -246,7 +249,9 @@ fun WorkoutPartnersDialog(workout: Workout, partners: List<Partner>, vm: IronInd
 
 @Composable
 fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: List<Equipment>, title: String,
-                   modeLocked: Boolean = false, equipmentLocked: Boolean = false, dismiss: () -> Unit, save: (Exercise, Equipment?) -> Unit) {
+                   modeLocked: Boolean = false, equipmentLocked: Boolean = false, askOnRename: Boolean = false, dismiss: () -> Unit, save: (Exercise, Equipment?) -> Unit) {
+    // "" until chosen, then "rename" (same exercise and history) or "separate" (new exercise, new history).
+    var identity by rememberSaveable { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf(initial.name) }
     var primary by rememberSaveable { mutableStateOf(initial.primaryTargets().joinToString(", ")) }
     var secondary by rememberSaveable { mutableStateOf(initial.secondaryMuscles.joinToString(", ")) }
@@ -257,6 +262,16 @@ fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: Lis
     AlertDialog(onDismissRequest = dismiss, title = { Text(title) }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(name, { name = it }, label = { Text("Exercise name *") })
+            val renaming = askOnRename && initial.renamedTo(name)
+            if (renaming) Column(Modifier.selectableGroup()) {
+                Text("Is this the same movement?", fontWeight = FontWeight.Bold)
+                listOf("rename" to "Same exercise, new name · keeps one history everywhere",
+                    "separate" to "Different exercise · starts its own history").forEach { (value, label) ->
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(identity == value, role = Role.RadioButton) { identity = value }, verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(identity == value, onClick = null); Spacer(Modifier.width(8.dp)); Text(label)
+                    }
+                }
+            }
             Text("Equipment for this entry", fontWeight = FontWeight.Bold)
             Text(equipment?.label ?: "Unspecified equipment")
             OutlinedButton(onClick = { picking = true }, enabled = !equipmentLocked) { Text("Choose equipment") }
@@ -268,10 +283,11 @@ fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: Lis
             Text("Examples: ${muscleSuggestions.take(12).joinToString(", ")}", style = MaterialTheme.typography.bodySmall)
             OutlinedTextField(target, { target = it }, label = { Text("Specific target / isolation notes") }, placeholder = { Text("e.g. Upper chest emphasis") })
         }
-    }, confirmButton = { TextButton(enabled = name.isNotBlank(), onClick = {
+    }, confirmButton = { TextButton(enabled = name.isNotBlank() && (!askOnRename || !initial.renamedTo(name) || identity.isNotEmpty()), onClick = {
         fun muscles(text: String) = text.split(',').map { it.trim() }.filter { it.isNotBlank() }.distinctBy { it.lowercase() }
         val first = muscles(primary)
-        save(initial.copy(name = name.trim(), equipment = "", brand = "", muscleGroup = "", primaryMuscles = first,
+        val base = if (askOnRename && initial.renamedTo(name) && identity == "separate") initial.copy(id = newId()) else initial
+        save(base.copy(name = name.trim(), equipment = "", brand = "", muscleGroup = "", primaryMuscles = first,
             secondaryMuscles = muscles(secondary).filter { value -> first.none { it.equals(value, true) } },
             target = target.trim(), mode = ExerciseMode.valueOf(mode), defaultEquipmentId = equipment?.id), equipment)
     }) { Text("Save exercise") } }, dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } })

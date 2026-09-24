@@ -1,5 +1,10 @@
 # IronIndex verification
 
+## 0.3.3 - 2026-09-24
+
+- assembleDebug, all 31 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 12 connected tests passed on emulator-5554.
+- New UI test: renaming Bench press inside a workout keeps Save disabled until a choice is made. "Different exercise" gives the entry a new ID while the library Bench press and past sessions keep their name and ID. The unit test covers case/space-only edits not prompting.
+
 ## 0.3.2 - 2026-09-24
 
 - assembleDebug, all 30 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 11 connected tests passed on emulator-5554.

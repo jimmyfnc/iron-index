@@ -1,7 +1,7 @@
 # IronIndex
 
 A colorful, standalone Android workout tracker. Built with Kotlin, Jetpack Compose
-and Room. Works offline with no account required. Current version: **0.3.2**.
+and Room. Works offline with no account required. Current version: **0.3.3**.
 
 ## Included
 
@@ -29,7 +29,8 @@ and Room. Works offline with no account required. Current version: **0.3.2**.
   exercise for one person (Add brings it back with their targets). Adding an exercise
   while a partner chip is selected adds it only for them.
 - **Exercise details button**: select equipment, muscles and side mode. Change side mode
-  before entering values. To switch machines after completing sets, add another entry.
+  before entering values. Renaming asks whether it's the same exercise (one history) or
+  a different one (its own history). To switch machines after completing sets, add another entry.
 - **Reorder**: hold and drag a handle in the order sheet, or use the arrows.
 - **Exercise history**: see prior completed sessions for that person and machine.
 - **Progress**: choose a person and a specific exercise/equipment/side series. Tap chart

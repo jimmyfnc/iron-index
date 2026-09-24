@@ -136,6 +136,27 @@ class AdvancedFlowTest {
         compose.onAllNodesWithContentDescription("Use lb for this workout").assertCountEquals(0)
     }
 
+    @Test fun renamingInsideAWorkoutAsksBeforeMergingHistories() {
+        val bench = Exercise(id = "bench-press", name = "Bench press")
+        val old = Workout(name = "Old bench", startedAt = 1_000, finishedAt = 2_000, exercises = listOf(WorkoutExercise(exercise = bench, sets = listOf(SetEntry(weight = "135", reps = "5", complete = true)))))
+        val workout = Workout(name = "Rename test", exercises = listOf(WorkoutExercise(exercise = bench)))
+        runBlocking { store.save(old); store.save(workout) }
+        launch(workout)
+        compose.onNodeWithContentDescription("Edit Bench press details").performClick()
+        awaitText("Exercise details")
+        compose.onNode(hasText("Bench press") and hasSetTextAction()).performTextReplacement("Incline DB press")
+        compose.onNodeWithText("Save exercise").assertIsNotEnabled()
+        compose.onNodeWithText("Different exercise", substring = true).performClick()
+        compose.onNodeWithText("Save exercise").performClick()
+        compose.waitUntil(10000) { runBlocking { store.workouts.first().first { it.id == workout.id }.exercises.single().exercise.name == "Incline DB press" } }
+        val renamed = runBlocking { store.workouts.first() }
+        assertNotEquals("bench-press", renamed.first { it.id == workout.id }.exercises.single().exercise.id)
+        assertEquals("Bench press", renamed.first { it.id == old.id }.exercises.single().exercise.name)
+        val library = runBlocking { store.exercises.first() }
+        assertEquals("Bench press", library.single { it.id == "bench-press" }.name)
+        assertTrue(library.any { it.name == "Incline DB press" && it.id != "bench-press" })
+    }
+
     @Test fun longPressDragReordersAndPreservesSetValues() {
         val a = WorkoutExercise(exercise = Exercise(name = "Alpha press"), sets = listOf(SetEntry(weight = "25", reps = "8")))
         val b = WorkoutExercise(exercise = Exercise(name = "Beta row"))

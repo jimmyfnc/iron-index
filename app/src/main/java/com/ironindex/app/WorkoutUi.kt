@@ -190,7 +190,7 @@ private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, participantId
         }
     }, confirmButton = { TextButton(onClick = { editing = false }) { Text("Done") } })
     if (editing && !readOnly) ExerciseEditor(entry.exercise, entry.equipmentProfile(), equipment, "Exercise details",
-        modeLocked = entry.sets.any { it.complete || it.weight.isNotBlank() || it.reps.isNotBlank() }, equipmentLocked = entry.sets.any { it.complete }, dismiss = { editing = false }) { exercise, profile -> details(exercise, profile); editing = false }
+        modeLocked = entry.sets.any { it.complete || it.weight.isNotBlank() || it.reps.isNotBlank() }, equipmentLocked = entry.sets.any { it.complete }, askOnRename = true, dismiss = { editing = false }) { exercise, profile -> details(exercise, profile); editing = false }
     if (removing) ConfirmDialog("Remove ${entry.exercise.name}?", "This removes its sets for you and all partners from this workout.", "Remove", { removing = false }) { remove(); removing = false }
     if (showHistory) ExerciseHistoryDialog(earlier) { showHistory = false }
 }

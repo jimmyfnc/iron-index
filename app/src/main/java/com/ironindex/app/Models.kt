@@ -48,6 +48,9 @@ fun legacyEquipment(exercise: Exercise): Equipment? {
     return value.copy(id = UUID.nameUUIDFromBytes(value.identity.toByteArray(Charsets.UTF_8)).toString())
 }
 
+/** A real rename, not just a capitalization or spacing fix. */
+fun Exercise.renamedTo(newName: String) = newName.isNotBlank() && !name.trim().equals(newName.trim(), ignoreCase = true)
+
 fun Exercise.primaryTargets(): List<String> = (primaryMuscles.ifEmpty { listOf(muscleGroup) })
     .map { it.trim() }.filter { it.isNotBlank() }.distinctBy { it.lowercase() }
 

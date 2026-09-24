@@ -11,7 +11,7 @@ Effort: 🟢 small (hours) · 🟡 medium (a day or two) · 🔴 large (multi-da
 |---|---|---|
 | Edit finished sessions (fix a typo or an unchecked set) | 🟡 | E2E review. Finished sessions are read-only now. |
 | Faster logging: prefill from last session, keyboard Next/Done that checks the set, pinned person chips, compact cards | 🟡 | E2E review gym-friction list. |
-| Exercise identity: "Replace exercise" vs "Edit library exercise" (renames currently rewrite history grouping) | 🟡 | E2E review. `editDetails` saves over the library ID. |
+| Merge duplicate custom exercises | 🟡 | Rename-vs-separate shipped in 0.3.3; merging existing duplicates is still manual. |
 | Rest timer after checking a set | 🟡 | Per-exercise default, notification when done. |
 | Backup export / import (JSON file) | 🟡 | Uninstalling currently loses all data; manifest disables Android backup. |
 | Coach mode: concurrent workouts per client | 🔴 | Start any routine for a partner without being a participant yourself. See 0.3.0 notes in CHANGELOG. |

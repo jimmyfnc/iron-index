@@ -69,4 +69,11 @@ class WorkoutTest {
         assertEquals("kg", defaultUnit("DE"))
         assertEquals("kg", defaultUnit("GB"))
     }
+
+    @Test fun onlyRealRenamesAskAboutExerciseIdentity() {
+        val bench = Exercise(name = "Bench press")
+        assertFalse(bench.renamedTo("bench press "))
+        assertFalse(bench.renamedTo(""))
+        assertTrue(bench.renamedTo("Incline DB press"))
+    }
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3 - 2026-09-24
+
+- Renaming an exercise inside a workout now asks whether it's the same movement or a different one. "Different exercise" starts its own history instead of renaming the library exercise and merging both histories into one chart and PR list. Capitalization and spacing fixes don't ask.
+
 ## 0.3.2 - 2026-09-24
 
 - Starting a routine or repeating a session while another workout is in progress now asks: resume it, or discard it and start the new one. An empty draft is replaced automatically instead of hijacking the start.
