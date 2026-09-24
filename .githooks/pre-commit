@@ -1,0 +1,96 @@
+#!/bin/bash
+# IronIndex pre-commit: release hygiene + documentation drift.
+# Active via `git config core.hooksPath .githooks` (run ./scripts/install-hooks.sh once per clone).
+# Emergency bypass only: git commit --no-verify (say why in the commit message).
+#
+# ── CONFIG ──────────────────────────────────────────────────────────────────
+SOURCE_PATTERNS="^app/src/main/|^app/build\.gradle\.kts$|^gradle/libs\.versions\.toml$"
+VERSION_FILE="app/build.gradle.kts"
+ROADMAP_FILE="docs/ROADMAP.md"
+BRAINSTORM_DIR="docs/brainstorms/"
+VERSION_DOCS="README.md"                       # must mention the current versionName
+DB_FILE="app/src/main/java/com/ironindex/app/WorkoutStore.kt"
+SCHEMA_DIR="app/schemas/com.ironindex.app.IronIndexDatabase"
+# ────────────────────────────────────────────────────────────────────────────
+
+fail=0
+error() { [ $fail = 0 ] && echo ""; echo "✗ $*"; fail=1; }
+warn() { echo "! $*"; }
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+changed=$(git diff --cached --name-only --diff-filter=ACMRD)
+[ -z "$changed" ] && exit 0
+has_head=true; git rev-parse -q --verify HEAD >/dev/null || has_head=false
+is_staged() { echo "$changed" | grep -qxF "$1"; }
+staged_blob() { git show ":$1" 2>/dev/null; }
+head_blob() { $has_head && git show "HEAD:$1" 2>/dev/null; }
+
+# ── 1. Never commit secrets, signing keys, local config or build output ────
+bad=$(echo "$staged" | grep -E '(^|/)local\.properties$|\.jks$|\.keystore$|(^|/)build/|(^|/)\.gradle/|google-services\.json$' || true)
+[ -n "$bad" ] && error "Local/secret/build files staged (keep out of Git):" && echo "$bad" | sed 's/^/    /'
+
+# ── 2. Never enable destructive Room migrations ────────────────────────────
+if echo "$staged" | grep -q '^app/src/main/.*\.kt$'; then
+  destructive=$(for f in $(echo "$staged" | grep '^app/src/main/.*\.kt$'); do staged_blob "$f" | grep -n 'fallbackToDestructiveMigration' | sed "s|^|$f:|"; done)
+  [ -n "$destructive" ] && error "Destructive Room migration found (AGENTS.md forbids it):" && echo "$destructive" | sed 's/^/    /'
+fi
+
+# ── 3. Room version bump needs an exported schema + a migration ─────────────
+if is_staged "$DB_FILE"; then
+  new_db=$(staged_blob "$DB_FILE" | grep -oE '@Database\([^)]*version *= *[0-9]+' | grep -oE '[0-9]+$')
+  old_db=$(head_blob "$DB_FILE" | grep -oE '@Database\([^)]*version *= *[0-9]+' | grep -oE '[0-9]+$')
+  if [ -n "$old_db" ] && [ -n "$new_db" ] && [ "$new_db" != "$old_db" ]; then
+    is_staged "$SCHEMA_DIR/$new_db.json" || error "Room version $old_db→$new_db: stage $SCHEMA_DIR/$new_db.json (build once to export it)."
+    staged_blob "$DB_FILE" | grep -q "MIGRATION_${old_db}_${new_db}" || error "Room version $old_db→$new_db: add and register MIGRATION_${old_db}_${new_db} (plus a MigrationTest)."
+  fi
+fi
+
+# ── 4. Brainstorm docs travel with the roadmap ──────────────────────────────
+brainstorms=$(git diff --cached --name-only --diff-filter=ADR | grep -E "^${BRAINSTORM_DIR}.*\.md$" || true)
+if [ -n "$brainstorms" ] && ! is_staged "$ROADMAP_FILE"; then
+  error "Brainstorm added/removed without updating $ROADMAP_FILE:"; echo "$brainstorms" | sed 's/^/    /'
+  echo "    New idea → add a roadmap row. Shipped → git mv it to docs/archive/ and remove the row."
+fi
+
+# ── 5. Source changes ship as a real release ────────────────────────────────
+source_changed=false
+for f in $changed; do echo "$f" | grep -qE "$SOURCE_PATTERNS" && { source_changed=true; break; }; done
+
+new_name=$(staged_blob "$VERSION_FILE" | grep -oE 'versionName *= *"[^"]+"' | grep -oE '"[^"]+"' | tr -d '"')
+new_code=$(staged_blob "$VERSION_FILE" | grep -oE 'versionCode *= *[0-9]+' | grep -oE '[0-9]+')
+old_name=$(head_blob "$VERSION_FILE" | grep -oE 'versionName *= *"[^"]+"' | grep -oE '"[^"]+"' | tr -d '"')
+old_code=$(head_blob "$VERSION_FILE" | grep -oE 'versionCode *= *[0-9]+' | grep -oE '[0-9]+')
+
+if $source_changed && $has_head; then
+  if [ "$new_name" = "$old_name" ]; then
+    error "App code changed but versionName is still $old_name. Bump it in $VERSION_FILE (feature → minor, fix → patch)."
+  else
+    ver_gt() { [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" = "$1" ] && [ "$1" != "$2" ]; }
+    ver_gt "$new_name" "$old_name" || error "versionName $new_name must be greater than $old_name."
+    [ -n "$new_code" ] && [ -n "$old_code" ] && [ "$new_code" -le "$old_code" ] && error "versionCode must increase (was $old_code, now $new_code)."
+  fi
+  is_staged CHANGELOG.md || error "App code changed: stage a CHANGELOG.md entry for $new_name."
+fi
+
+# ── 6. Documentation drift: version references must match versionName ──────
+if [ -n "$new_name" ]; then
+  top=$(staged_blob CHANGELOG.md | grep -m1 -E '^## ' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+  [ "$top" != "$new_name" ] && error "CHANGELOG.md newest entry is ${top:-missing}, but versionName is $new_name."
+  for doc in $VERSION_DOCS; do
+    staged_blob "$doc" | grep -qF "$new_name" || error "$doc does not mention the current version $new_name."
+  done
+  staged_blob docs/VERIFICATION.md | grep -qE "^## .*$new_name" || warn "docs/VERIFICATION.md has no section for $new_name yet (record build/test results)."
+fi
+
+# ── 7. Soft drift hint: UI changes usually need a README/docs touch ─────────
+if echo "$changed" | grep -qE '^app/src/main/.*Ui\.kt$|MainActivity\.kt$' && ! echo "$changed" | grep -qE '^README\.md$|^docs/'; then
+  warn "UI code changed without README/docs updates. Check README 'Using the new features' and docs/PRODUCT.md."
+fi
+
+if [ $fail = 1 ]; then
+  echo ""
+  echo "Commit blocked by .githooks/pre-commit. Fix the items above, then git add and commit again."
+  echo "After committing a release: git tag -a v$new_name -m \"v$new_name — summary\" && git push --follow-tags"
+  exit 1
+fi
+exit 0

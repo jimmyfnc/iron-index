@@ -1,0 +1,43 @@
+# Changelog
+
+## 0.3.0 - 2026-09-24
+
+- Per-person workouts: new exercises still mirror to everyone, but any card can be skipped for the person in view, and adding while a partner chip is selected creates a partner-only exercise. Skipped entries collapse to an "Add for …" row.
+- Partner details: optional goal/focus and notes (injuries, cues). Shown above the sets while logging for that person.
+- Partner profiles: sessions, sets, volume, last trained, recent records and a session list. Sessions open with that partner selected; Progress charts open preselected to them.
+- Finished-session headers show the selected person's sets and volume. Counts use singular/plural wording.
+- Repeat/routine copies drop exercises you skipped. Stored as optional JSON fields; no Room schema change or migration.
+
+## 0.2.2 - 2026-09-23
+
+- Colored muscle tags on exercise results and workout cards, with explicit secondary labels.
+- Tappable muscle filters and search across primary/secondary targets, broad groups, and custom muscle names.
+- Starter curls and pushdowns use Biceps and Triceps; Arms still finds both. Existing workout snapshots stay unchanged.
+
+
+## 0.2.1 — 2026-09-23
+
+- Choose equipment explicitly after selecting an exercise. One exercise can be logged with dumbbells, cables, or any machine without creating duplicate exercises.
+- Previously used equipment appears first; routines retain each entry’s equipment and histories remain equipment-specific.
+- Exercise search describes movements and muscles instead of implying a single machine defines the exercise.
+
+
+## 0.2.0 — 2026-09-23
+
+- Drag exercise ordering with auto-scroll and accessible up/down controls.
+- Independent equipment catalog with brand, model and optional gym/nickname identity.
+- Partner Manager, multi-partner attendance, and optional independent set tracking.
+- Single-arm/single-leg modes with separate left/right inputs and completion.
+- Primary and secondary muscles plus specific targeting notes.
+- In-workout prior-session references and equipment/person-specific exercise history.
+- Progress charts for weight, reps, estimated 1RM, volume and relative performance.
+- Weekly/monthly volume, muscle counts, frequency, equipment-specific PRs and paired
+  left/right comparisons, with explicit counting and calculation rules.
+- Non-destructive Room 1→2 migration preserving existing workout data and equipment text.
+- Expanded migration, gesture, participant, catalog, analytics and regression tests.
+
+## 0.1.0 — 2026-09-22
+
+- Initial standalone Android workout tracker.
+- Offline workout drafts, set logging, equipment details, routine creation and history.
+- Vibrant native Compose interface and future Discipline integration notes.
