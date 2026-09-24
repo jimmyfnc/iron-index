@@ -9,7 +9,6 @@ Effort: 🟢 small (hours) · 🟡 medium (a day or two) · 🔴 large (multi-da
 
 | Idea | Effort | Notes |
 |---|---|---|
-| Edit finished sessions (fix a typo or an unchecked set) | 🟡 | E2E review. Finished sessions are read-only now. |
 | Faster logging: prefill from last session, keyboard Next/Done that checks the set, pinned person chips, compact cards | 🟡 | E2E review gym-friction list. |
 | Merge duplicate custom exercises | 🟡 | Rename-vs-separate shipped in 0.3.3; merging existing duplicates is still manual. |
 | Rest timer after checking a set | 🟡 | Per-exercise default, notification when done. |

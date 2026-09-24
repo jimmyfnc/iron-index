@@ -1,5 +1,13 @@
 # IronIndex verification
 
+## 0.5.0 - 2026-09-24
+
+- assembleDebug, all 50 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 18 connected tests passed on emulator-5554, with ANDROID_SERIAL pinned while the physical phone was attached (the phone stayed on 0.4.0 and was untouched). The emulator was cold-restarted after one "System has crashed" run abort (a host/emulator issue; a clean rerun passed).
+- New connected tests (EditSessionTest): backspace-and-retype on a checked set, then checking a forgotten set, Done → "edited" and dates unchanged; Discard restores the stored session exactly and the on-screen field reloads; system Back with no checked sets keeps the original.
+- New unit tests: movedTo keeps time of day and duration and is capped at now; content comparison ignores bookkeeping; a checked-but-invalid set doesn't count. Also fixed a pre-existing flaky serialization test to use the storage encoder.
+- Manual emulator run with real keyboard input found two races the harness didn't hit: typing through blank unchecked the set, and Discard left the field showing the discarded value. Both were fixed by making the checkbox user-only (sets count only when checked and valid) and syncing unfocused fields from the saved value, then rechecked on the emulator (225 kept checked; Discard shows 25).
+- A code review found stale fields after Discard, the reminder undercount, future start times, unfinalized edits after process death, overpromising Discard wording and swallowed errors. All fixed.
+
 ## 0.4.0 - 2026-09-24
 
 - assembleDebug, all 46 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 15 connected tests passed on emulator-5554 only. A physical phone connected during verification, so later commands were pinned with ANDROID_SERIAL and nothing was installed on it.

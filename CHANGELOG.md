@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 - 2026-09-24
+
+- **Edit finished sessions.** Open a session from History and tap **Edit session** to fix a mistyped weight, check a set you forgot, add or remove sets and exercises, or move it to the right day with **Change date** (time of day and duration kept, never in the future).
+- **Done editing** marks the session "edited". **Discard changes** puts its sets, exercises and date back exactly as they were. Leaving a session with no checked sets keeps the original, so history can't be emptied by accident. An edit interrupted by the app closing is wrapped up safely on the next launch.
+- Correcting a checked set no longer unchecks it, whether mid-workout or in edit mode. A set that's briefly blank while you retype just doesn't count until it's valid again.
+- The backup reminder counts sessions you've edited or moved since your last backup.
+
 ## 0.4.0 - 2026-09-24
 
 - **Backup & restore** (Train → Backup). Export saves every session, routine, partner, machine and custom exercise to one JSON file wherever you choose: Drive, Downloads, email.

@@ -1,14 +1,14 @@
 # IronIndex
 
 A colorful, standalone Android workout tracker. Built with Kotlin, Jetpack Compose
-and Room. Works offline with no account required. Current version: **0.4.0**.
+and Room. Works offline with no account required. Current version: **0.5.0**.
 
 ## Included
 
 - Freestyle workout logging with automatic draft recovery.
 - Custom exercises, reps, weight, checked sets, equipment, brand/model, optional muscle group.
 - Reusable routines: create ahead of time or save from a live/completed workout.
-- Workout history and repeat-session flow.
+- Workout history, repeat-session flow, and editing finished sessions (values, sets, exercises, date).
 - Per-workout lb/kg units (switchable until a weight is entered; default follows your region), comma or dot decimals, and a starter exercise library.
 - Dark ink, lime, lavender and coral interface.
 - Drag-and-drop exercise ordering via Reorder, with accessible up/down alternatives.
@@ -35,6 +35,10 @@ and Room. Works offline with no account required. Current version: **0.4.0**.
   a different one (its own history). To switch machines after completing sets, add another entry.
 - **Reorder**: hold and drag a handle in the order sheet, or use the arrows.
 - **Exercise history**: see prior completed sessions for that person and machine.
+- **Edit a finished session**: open it from History and tap **Edit session**. Fix values,
+  check a forgotten set, add or remove sets and exercises, or **Change date**. **Done
+  editing** marks it "edited"; **Discard changes** puts it back as it was. If no set is left
+  checked, the original is kept.
 - **Train → Backup**: **Export backup** saves one JSON file wherever you choose (Drive,
   Downloads, email). **Import backup** shows what will be added before writing anything;
   it merges by ID, never deletes, and importing the same file twice changes nothing.
@@ -70,6 +74,9 @@ Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
 0.2.0: [Partner + Left/Right logging](docs/screenshots/0.2.0/logging.png) ·
 [Reordering](docs/screenshots/0.2.0/reorder.png) ·
 [Progress](docs/screenshots/0.2.0/progress.png). These previews use synthetic test data.
+
+0.5.0: [Editing a session](docs/screenshots/0.5.0/editing-session.png) ·
+[Change date](docs/screenshots/0.5.0/change-date.png).
 
 0.4.0: [Backup & restore](docs/screenshots/0.4.0/backup-screen.png) ·
 [Import preview](docs/screenshots/0.4.0/import-preview.png).

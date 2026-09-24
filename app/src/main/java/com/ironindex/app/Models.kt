@@ -66,6 +66,8 @@ data class SetEntry(
 ) {
     fun valid(): Boolean = reps.toIntOrNull()?.let { it in 1..9999 } == true &&
         weight.toWeightOrNull() != null
+    /** Checked and readable. A checked set being corrected (briefly blank or invalid) doesn't count until it's valid again. */
+    val counts get() = complete && valid()
 }
 
 @Serializable
@@ -165,17 +167,30 @@ data class Workout(
     val finishedAt: Long? = null,
     val exercises: List<WorkoutExercise> = emptyList(),
     val partners: List<WorkoutPartner> = emptyList(),
+    /** Set when a finished session is changed afterwards. */
+    val editedAt: Long? = null,
 ) {
     val completedSets get() = completedSetsFor(null)
-    val allCompletedSets get() = exercises.sumOf { e -> e.sets.count { it.complete } }
+    val allCompletedSets get() = exercises.sumOf { e -> e.sets.count { it.counts } }
     val volume get() = volumeFor(null)
-    fun completedSetsFor(participantId: String?) = exercises.sumOf { e -> e.sets.count { it.complete && it.participantId == participantId } }
-    fun volumeFor(participantId: String?) = exercises.sumOf { e -> e.sets.filter { it.complete && it.participantId == participantId }.sumOf {
+    fun completedSetsFor(participantId: String?) = exercises.sumOf { e -> e.sets.count { it.counts && it.participantId == participantId } }
+    fun volumeFor(participantId: String?) = exercises.sumOf { e -> e.sets.filter { it.counts && it.participantId == participantId }.sumOf {
         (it.weight.toWeightOrNull() ?: 0.0) * (it.reps.toIntOrNull() ?: 0)
     } }
 
     /** The unit can change until a weight is entered, so no value is ever reinterpreted. */
     val unitLocked get() = exercises.any { e -> e.sets.any { it.weight.isNotBlank() } }
+
+    /** Same sets, exercises, people and dates, ignoring save bookkeeping. */
+    fun sameContentAs(other: Workout) = copy(updatedAt = 0, editedAt = null) == other.copy(updatedAt = 0, editedAt = null)
+
+    /** Moves a session to another calendar day, keeping its time of day and how long it lasted, and never ending in the future. */
+    fun movedTo(date: java.time.LocalDate, zone: java.time.ZoneId = java.time.ZoneId.systemDefault(), now: Long = System.currentTimeMillis()): Workout {
+        val start = java.time.Instant.ofEpochMilli(startedAt).atZone(zone)
+        val duration = (finishedAt ?: startedAt) - startedAt
+        val moved = date.atTime(start.toLocalTime()).atZone(zone).toInstant().toEpochMilli().coerceAtMost(now - duration)
+        return copy(startedAt = moved, finishedAt = finishedAt?.let { moved + duration })
+    }
 
     /** A draft's date is when training began: stamp it when the first set is checked. */
     fun stampStart(before: Workout, now: Long = System.currentTimeMillis()): Workout =

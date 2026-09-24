@@ -141,7 +141,8 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
                         }
                         item {
                             val backedUpUntil by vm.backedUpUntil.collectAsStateWithLifecycle()
-                            val unsaved = history.count { (it.finishedAt ?: it.startedAt) > backedUpUntil }
+                            // Moved or edited sessions count from their latest change, not their (possibly earlier) date.
+                            val unsaved = history.count { maxOf(it.finishedAt ?: it.startedAt, it.editedAt ?: 0L) > backedUpUntil }
                             val stale = if (backedUpUntil > 0) System.currentTimeMillis() - backedUpUntil > 14L * 24 * 60 * 60 * 1000 else unsaved >= 3
                             if (unsaved > 0 && stale) Surface(onClick = { manager = "backup" }, color = Panel, shape = RoundedCornerShape(20.dp)) {
                                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

@@ -16,12 +16,14 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -37,7 +39,11 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
     var managingPartners by rememberSaveable(workout.id) { mutableStateOf(false) }
     var athlete by rememberSaveable(workout.id) { mutableStateOf(vm.openedParticipant.value.orEmpty()) }
     val participantId = athlete.ifBlank { null }
-    val readOnly = workout.finishedAt != null
+    val editingOriginal by vm.editingOriginal.collectAsStateWithLifecycle()
+    val finished = workout.finishedAt != null
+    val editingSession = finished && editingOriginal?.id == workout.id
+    val readOnly = finished && !editingSession
+    var pickingDate by rememberSaveable(workout.id) { mutableStateOf(false) }
     val tracked = workout.partners.filter { it.trackSets }
     val personName = tracked.find { it.id == athlete }?.name
     val athleteProfile = partners.find { it.id == athlete }
@@ -49,11 +55,15 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 IconButton(onClick = { vm.opened.value = null }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
-                Text(if (workout.isTemplate) "ROUTINE BUILDER" else if (readOnly) "SESSION COMPLETE" else "IN YOUR ZONE", color = Lime, fontSize = 12.sp)
+                Text(if (workout.isTemplate) "ROUTINE BUILDER" else if (editingSession) "EDITING SESSION" else if (readOnly) "SESSION COMPLETE" else "IN YOUR ZONE", color = if (editingSession) Coral else Lime, fontSize = 12.sp)
                 IconButton(onClick = { renaming = true }) { Icon(Icons.Rounded.Edit, "Rename workout") }
             }
             Text(workout.name, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
-            Text(if (workout.isTemplate) "Saved automatically · ${workout.unit}" else if (readOnly) "${count(workout.completedSetsFor(participantId), "set")} logged${personName?.let { " by $it" }.orEmpty()} · ${workout.volumeFor(participantId).toInt()} ${workout.unit} total volume" else "${count(workout.completedSetsFor(participantId), "set")} logged${personName?.let { " by $it" }.orEmpty()} · autosaves on this phone", color = Muted)
+            Text(if (workout.isTemplate) "Saved automatically · ${workout.unit}" else if (finished) "${count(workout.completedSetsFor(participantId), "set")} logged${personName?.let { " by $it" }.orEmpty()} · ${workout.volumeFor(participantId).toInt()} ${workout.unit} total volume${workout.editedAt?.let { " · edited ${dateLabel(it)}" }.orEmpty()}" else "${count(workout.completedSetsFor(participantId), "set")} logged${personName?.let { " by $it" }.orEmpty()} · autosaves on this phone", color = Muted)
+            if (editingSession) Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Date · ${dateLabel(workout.startedAt)}", modifier = Modifier.weight(1f))
+                TextButton(onClick = { pickingDate = true }) { Icon(Icons.Rounded.CalendarMonth, null); Spacer(Modifier.width(4.dp)); Text("Change date") }
+            }
             if (!readOnly) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { ordering = true }, enabled = workout.exercises.size > 1) { Icon(Icons.Rounded.SwapVert, null); Text("Reorder") }
                 if (!workout.isTemplate) TextButton(onClick = { managingPartners = true }) { Icon(Icons.Rounded.People, null); Text("Partners") }
@@ -85,7 +95,7 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
             else {
                 val earlier = remember(personLogs, workout.id, workout.startedAt, entry.exercise.id, entry.equipmentKey(), entry.exercise.mode) { earlierSets(personLogs, workout, entry) }
                 val previous = remember(earlier) { lastSession(earlier) }
-                ExerciseCard(entry, workout, participantId, previous, earlier, equipment,
+                ExerciseCard(entry, workout, readOnly, participantId, previous, earlier, equipment,
                     update = { transform -> vm.edit(workout.id) { w -> w.copy(exercises = w.exercises.map { if (it.id == entry.id) transform(it) else it }) } },
                     details = { exercise, profile -> vm.editDetails(workout.id, entry.id, exercise, profile) },
                     remove = { vm.edit(workout.id) { w -> w.copy(exercises = w.exercises.filterNot { it.id == entry.id }) } },
@@ -99,12 +109,17 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (workout.isTemplate) Button(onClick = { vm.opened.value = null }, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) { Text("Done editing") }
-                else {
-                    if (!readOnly) Button(onClick = { finishing = true }, enabled = workout.allCompletedSets > 0, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) { Icon(Icons.Rounded.Check, null); Text("Finish workout") }
+                else if (editingSession) {
+                    Button(onClick = vm::doneEditing, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) { Icon(Icons.Rounded.Check, null); Text("Done editing") }
+                    TextButton(onClick = vm::discardEdit, modifier = Modifier.fillMaxWidth()) { Text("Discard changes", color = Coral) }
+                    Text("Changes save as you go. Discard puts this session's sets, exercises and date back as they were; library, equipment and partner changes stay.", color = Muted, fontSize = 12.sp)
+                } else {
+                    if (finished) OutlinedButton(onClick = { vm.beginEdit(workout) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Icon(Icons.Rounded.Edit, null); Spacer(Modifier.width(8.dp)); Text("Edit session") }
+                    if (!finished) Button(onClick = { finishing = true }, enabled = workout.allCompletedSets > 0, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) { Icon(Icons.Rounded.Check, null); Text("Finish workout") }
                     OutlinedButton(onClick = { saving = true }, enabled = workout.exercises.isNotEmpty(), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Save as a routine") }
                     if (readOnly) Button(onClick = { vm.start(workout) }, modifier = Modifier.fillMaxWidth()) { Text("Repeat workout") }
                 }
-                TextButton(onClick = { deleting = true }, modifier = Modifier.fillMaxWidth()) { Text(if (workout.isTemplate) "Delete routine" else if (readOnly) "Delete session" else "Discard workout", color = Coral) }
+                if (!editingSession) TextButton(onClick = { deleting = true }, modifier = Modifier.fillMaxWidth()) { Text(if (workout.isTemplate) "Delete routine" else if (readOnly) "Delete session" else "Discard workout", color = Coral) }
             }
         }
     }
@@ -113,6 +128,7 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
     if (saving) NameDialog("Save as a routine", workout.name, { saving = false }) { name -> vm.saveRoutine(workout, name); saving = false }
     if (finishing) ConfirmDialog("Nice work. Wrap it up?", "${count(workout.completedSets, "set")} for you${if (workout.partners.any { it.trackSets }) " and ${count(workout.allCompletedSets - workout.completedSets, "partner set")}" else ""} will be saved. Unchecked sets remain for reference.", "Finish workout", { finishing = false }) { vm.finish(workout.id); finishing = false }
     if (deleting) ConfirmDialog("Delete ${if (workout.isTemplate) "routine" else "workout"}?", "This removes this record from your phone. Other sessions and routines stay saved.", "Delete", { deleting = false }) { vm.delete(workout.id); deleting = false }
+    if (pickingDate) SessionDatePicker(workout.startedAt, { pickingDate = false }) { date -> vm.edit(workout.id) { it.movedTo(date) }; pickingDate = false }
     if (managingPartners) WorkoutPartnersDialog(workout, partners, vm) { managingPartners = false }
     if (ordering) ReorderExercises(workout.exercises, { ordering = false }) { ids ->
         vm.edit(workout.id) { w -> w.copy(exercises = ids.mapNotNull { id -> w.exercises.find { it.id == id } } + w.exercises.filter { it.id !in ids }) }
@@ -120,7 +136,7 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
 }
 
 @Composable
-private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, participantId: String?, previous: List<LoggedSet>, earlier: List<LoggedSet>, equipment: List<Equipment>,
+private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, readOnly: Boolean, participantId: String?, previous: List<LoggedSet>, earlier: List<LoggedSet>, equipment: List<Equipment>,
                          update: ((WorkoutExercise) -> WorkoutExercise) -> Unit, details: (Exercise, Equipment?) -> Unit, remove: () -> Unit,
                          skip: (() -> Unit)? = null, personName: String? = null) {
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -128,7 +144,6 @@ private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, participantId
     val who = personName ?: "you"
     var showPrevious by rememberSaveable { mutableStateOf(false) }
     var showHistory by rememberSaveable { mutableStateOf(false) }
-    val readOnly = workout.finishedAt != null
     val sets = entry.sets.filter { it.participantId == participantId }
     val groups = sets.map { it.groupId }.distinct()
     Surface(color = Panel, shape = RoundedCornerShape(24.dp)) {
@@ -215,19 +230,26 @@ private fun SetRow(exerciseName: String, number: Int, set: SetEntry, unit: Strin
     var deleting by rememberSaveable { mutableStateOf(false) }
     var weight by rememberSaveable(set.id) { mutableStateOf(set.weight) }
     var reps by rememberSaveable(set.id) { mutableStateOf(set.reps) }
+    // Typing never changes the checkbox; only the lifter does. A checked set that's briefly blank or invalid
+    // while being corrected simply doesn't count until it's valid again (see SetEntry.counts).
+    // Fields follow the saved value whenever they aren't being typed in, so Discard, restores and imports show up.
+    var weightFocused by remember { mutableStateOf(false) }
+    var repsFocused by remember { mutableStateOf(false) }
+    LaunchedEffect(set.weight, weightFocused, readOnly) { if ((readOnly || !weightFocused) && weight != set.weight) weight = set.weight }
+    LaunchedEffect(set.reps, repsFocused, readOnly) { if ((readOnly || !repsFocused) && reps != set.reps) reps = set.reps }
     val suffix = if (set.side == Side.BOTH) "" else " ${set.side.name.lowercase().replaceFirstChar { it.uppercase() }}"
     Column {
         if (suffix.isNotEmpty()) Text("Set $number ·$suffix", color = if (set.side == Side.LEFT) Lavender else Coral, fontWeight = FontWeight.Bold)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (set.side == Side.BOTH) Text("$number", color = if (set.complete) Lime else Muted, modifier = Modifier.width(20.dp))
-            OutlinedTextField(value = weight, onValueChange = { raw -> val value = raw.replace(',', '.'); weight = value; onChange { it.copy(weight = value, complete = false) } },
+            if (set.side == Side.BOTH) Text("$number", color = if (set.counts) Lime else Muted, modifier = Modifier.width(20.dp))
+            OutlinedTextField(value = weight, onValueChange = { raw -> val value = raw.replace(',', '.'); weight = value; onChange { it.copy(weight = value) } },
                 label = { Text(unit) }, singleLine = true, readOnly = readOnly, isError = weight.isNotBlank() && weight.toWeightOrNull() == null,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.weight(1f).semantics { contentDescription = "$exerciseName set $number$suffix weight in $unit" })
-            OutlinedTextField(value = reps, onValueChange = { value -> reps = value; onChange { it.copy(reps = value, complete = false) } },
+                modifier = Modifier.weight(1f).onFocusChanged { weightFocused = it.isFocused }.semantics { contentDescription = "$exerciseName set $number$suffix weight in $unit" })
+            OutlinedTextField(value = reps, onValueChange = { value -> reps = value; onChange { it.copy(reps = value) } },
                 label = { Text("reps") }, singleLine = true, readOnly = readOnly, isError = reps.isNotBlank() && reps.toIntOrNull()?.let { it in 1..9999 } != true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.weight(1f).semantics { contentDescription = "$exerciseName set $number$suffix reps" })
+                modifier = Modifier.weight(1f).onFocusChanged { repsFocused = it.isFocused }.semantics { contentDescription = "$exerciseName set $number$suffix reps" })
             if (!template) Checkbox(checked = set.complete, enabled = !readOnly && (set.complete || set.valid()),
                 onCheckedChange = { checked -> onChange { it.copy(complete = checked && it.valid()) } }, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = "Complete set $number$suffix" })
             if (!readOnly) IconButton(onClick = { deleting = true }) { Icon(Icons.Rounded.Close, "Delete set $number$suffix", tint = Muted) }
@@ -286,6 +308,23 @@ private fun ExercisePicker(library: List<Exercise>, equipment: List<Equipment>, 
         }
     }
     if (custom) ExerciseEditor(Exercise(name = query), null, equipment, "Create exercise", dismiss = { custom = false }) { e, profile -> select(e, true, profile) }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SessionDatePicker(startedAt: Long, dismiss: () -> Unit, pick: (java.time.LocalDate) -> Unit) {
+    val zone = java.time.ZoneId.systemDefault()
+    val today = java.time.LocalDate.now(zone)
+    // The picker works in UTC midnights; convert to and from the local calendar day.
+    val initial = java.time.Instant.ofEpochMilli(startedAt).atZone(zone).toLocalDate().atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+    val state = rememberDatePickerState(initialSelectedDateMillis = initial, selectableDates = object : SelectableDates {
+        override fun isSelectableDate(utcTimeMillis: Long) = !java.time.Instant.ofEpochMilli(utcTimeMillis).atZone(java.time.ZoneOffset.UTC).toLocalDate().isAfter(today)
+    })
+    DatePickerDialog(onDismissRequest = dismiss, confirmButton = {
+        TextButton(enabled = state.selectedDateMillis != null, onClick = {
+            state.selectedDateMillis?.let { pick(java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC).toLocalDate()) }
+        }) { Text("Move session") }
+    }, dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } }) { DatePicker(state) }
 }
 
 fun dateLabel(time: Long): String = SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(time))

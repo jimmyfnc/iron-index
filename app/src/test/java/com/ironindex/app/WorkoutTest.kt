@@ -42,7 +42,8 @@ class WorkoutTest {
     @Test fun serializationPreservesPartialInputForResuming() {
         val workout = Workout(name = "Draft", exercises = listOf(WorkoutExercise(exercise = Exercise(name = "Row"),
             sets = listOf(SetEntry(reps = "", weight = "2.")))))
-        assertEquals(workout, Json.decodeFromString<Workout>(Json.encodeToString(workout)))
+        // Same encoder as storage: it writes defaults, so time-based defaults can't be regenerated on decode.
+        assertEquals(workout, storageJson.decodeFromString<Workout>(storageJson.encodeToString(workout)))
     }
 
     @Test fun commaDecimalsAreAcceptedAndUnitLocksOnceAWeightIsEntered() {
@@ -75,5 +76,38 @@ class WorkoutTest {
         assertFalse(bench.renamedTo("bench press "))
         assertFalse(bench.renamedTo(""))
         assertTrue(bench.renamedTo("Incline DB press"))
+    }
+
+    @Test fun movingASessionKeepsTimeOfDayAndDuration() {
+        val zone = java.time.ZoneOffset.UTC
+        val start = java.time.LocalDateTime.of(2026, 9, 24, 18, 30).toInstant(zone).toEpochMilli()
+        val w = Workout(name = "Late", startedAt = start, finishedAt = start + 3_600_000)
+        val moved = w.movedTo(java.time.LocalDate.of(2026, 9, 21), zone)
+        assertEquals(java.time.LocalDateTime.of(2026, 9, 21, 18, 30).toInstant(zone).toEpochMilli(), moved.startedAt)
+        assertEquals(3_600_000L, moved.finishedAt!! - moved.startedAt)
+    }
+
+    @Test fun movingToTodayNeverEndsInTheFuture() {
+        val zone = java.time.ZoneOffset.UTC
+        val evening = java.time.LocalDateTime.of(2026, 9, 20, 18, 30).toInstant(zone).toEpochMilli()
+        val now = java.time.LocalDateTime.of(2026, 9, 24, 9, 0).toInstant(zone).toEpochMilli()
+        val moved = Workout(name = "W", startedAt = evening, finishedAt = evening + 3_600_000).movedTo(java.time.LocalDate.of(2026, 9, 24), zone, now)
+        assertEquals(now, moved.finishedAt)
+        assertEquals(now - 3_600_000, moved.startedAt)
+    }
+
+    @Test fun aCheckedSetBeingCorrectedDoesNotCountUntilValid() {
+        val blank = SetEntry(weight = "", reps = "5", complete = true)
+        assertFalse(blank.counts)
+        val w = Workout(name = "W", exercises = listOf(WorkoutExercise(exercise = Exercise(name = "Row"), sets = listOf(blank, blank.copy(id = newId(), weight = "100")))))
+        assertEquals(1, w.allCompletedSets)
+        assertEquals(500.0, w.volume, 0.0)
+        assertTrue(blank.copy(weight = "225").counts)
+    }
+
+    @Test fun contentComparisonIgnoresSaveBookkeeping() {
+        val w = Workout(name = "S", updatedAt = 1, exercises = listOf(WorkoutExercise(exercise = Exercise(name = "Row"))))
+        assertTrue(w.sameContentAs(w.copy(updatedAt = 99, editedAt = 5)))
+        assertFalse(w.sameContentAs(w.copy(name = "T")))
     }
 }

@@ -11,7 +11,8 @@ It lives independently of Discipline; neither app needs the other installed.
   set's targets with Add set. Support zero external weight for bodyweight moves.
 - Capture equipment type, machine brand/model, and an optional muscle-group label.
 - Save a workout as a reusable routine during or after the session.
-- Create/edit routines ahead of time, review completed sessions, and repeat them.
+- Create/edit routines ahead of time, review completed sessions, correct them afterwards
+  (values, sets, exercises, date) with discard, and repeat them.
 - Automatically persist partial input and unfinished sessions on the device.
 - Use lb or kg; each routine/session retains its own unit.
 - Reorder exercises with drag handles in a compact sheet.

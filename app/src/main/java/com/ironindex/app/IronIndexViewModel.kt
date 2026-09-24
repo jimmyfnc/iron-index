@@ -27,6 +27,45 @@ class IronIndexViewModel @JvmOverloads constructor(application: Application, pri
     /** Person chip to select when the next workout opens; null means You. */
     val openedParticipant = MutableStateFlow<String?>(null)
     fun openSession(workoutId: String, participantId: String?) { openedParticipant.value = participantId; opened.value = workoutId }
+
+    /** The finished session being edited, exactly as it was before editing began (used by Discard). */
+    val editingOriginal = MutableStateFlow<Workout?>(null)
+    fun beginEdit(workout: Workout) {
+        if (workout.finishedAt == null || workout.isTemplate) return
+        editingOriginal.value = workout
+        // Kept on disk too, so an edit interrupted by the app being killed is still wrapped up safely.
+        preferences.edit().putString("editingOriginal", storageJson.encodeToString(Workout.serializer(), workout)).apply()
+    }
+    private fun clearEdit() { editingOriginal.value = null; preferences.edit().remove("editingOriginal").apply() }
+    fun doneEditing() = run { finishEdit() }
+    fun discardEdit() = run {
+        val original = editingOriginal.value ?: return@run
+        // A fresh updatedAt so a backup exported mid-edit can't bring the abandoned changes back.
+        store.save(original.copy(updatedAt = System.currentTimeMillis()))
+        clearEdit()
+        notice.value = "Changes discarded."
+    }
+    private suspend fun finishEdit() {
+        val original = editingOriginal.value ?: return
+        var keptOriginal = false
+        store.edit(original.id) { edited ->
+            when {
+                // Never let editing empty a session out of history by accident.
+                edited.allCompletedSets == 0 -> { keptOriginal = true; original }
+                edited.sameContentAs(original) -> edited
+                else -> edited.copy(editedAt = System.currentTimeMillis())
+            }
+        }
+        clearEdit()
+        if (keptOriginal) notice.value = "No sets were checked, so the original session was kept."
+    }
+    init {
+        preferences.getString("editingOriginal", null)
+            ?.let { runCatching { storageJson.decodeFromString(Workout.serializer(), it) }.getOrNull() }
+            ?.let { interrupted -> editingOriginal.value = interrupted; run { finishEdit() } }
+        // Leaving the session (Back, another screen) counts as Done.
+        viewModelScope.launch { opened.collect { id -> if (editingOriginal.value?.let { it.id != id } == true) run { finishEdit() } } }
+    }
     private fun run(block: suspend () -> Unit) { viewModelScope.launch {
         try { block() } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
