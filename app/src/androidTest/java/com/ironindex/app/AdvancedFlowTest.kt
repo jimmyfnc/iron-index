@@ -93,11 +93,11 @@ class AdvancedFlowTest {
         compose.onNodeWithText("Left shoulder: no deep dips").assertExists()
         compose.onNodeWithContentDescription("Skip Squat for Alex").performScrollTo().performClick()
         awaitText("Not in Alex’s workout")
-        compose.waitUntil(10000) { runBlocking { store.workouts.first().first { it.id == workout.id }.exercises.single().let { !it.includes(alex.id) && it.sets.none { s -> s.participantId == alex.id } } } }
+        compose.waitUntil(10000) { runBlocking { !store.workouts.first().first { it.id == workout.id }.exercises.single().includes(alex.id) } }
         compose.onNodeWithText("You").performClick()
         compose.onNodeWithContentDescription("Skip Squat for you").assertExists()
         compose.onNodeWithText("Alex").performClick()
-        compose.onNodeWithText("Add for Alex").performClick()
+        compose.onNodeWithContentDescription("Add Squat for Alex").performClick()
         compose.waitUntil(10000) { runBlocking { store.workouts.first().first { it.id == workout.id }.exercises.single().includes(alex.id) } }
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText("Partners").performClick()
@@ -105,6 +105,13 @@ class AdvancedFlowTest {
         compose.onNodeWithText("History & stats").performClick()
         awaitText("Last trained ${dateLabel(1_000)}")
         compose.onNodeWithText("Old pair day", substring = true).assertExists()
+        compose.onNodeWithText("Progress charts").performClick()
+        awaitText("Your work, in focus.")
+        androidx.test.espresso.Espresso.pressBack()
+        awaitText("Last trained ${dateLabel(1_000)}")
+        compose.onNodeWithText("Old pair day", substring = true).performClick()
+        awaitText("SESSION COMPLETE")
+        compose.onNodeWithText("Alex").assertIsSelected()
     }
 
     @Test fun longPressDragReordersAndPreservesSetValues() {

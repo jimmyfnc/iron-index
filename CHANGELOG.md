@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.1 - 2026-09-24
+
+- Partner-only and skipped exercises no longer appear for partners who join later or rejoin.
+- Detaching a partner removes exercises nobody else is doing instead of leaving empty entries in history.
+- Skipping an exercise now just hides it for that person; adding it back restores their routine targets. No confirmation needed.
+- Back from Progress returns to the partner profile it was opened from.
+- Screen readers announce which exercise each "Add for …" button restores; profile stats wrap at large text sizes.
+- The partner editor keeps your typing when the phone rotates.
+- Wording: "1 exercise", and the finish dialog only mentions partner sets when partners are tracked.
+
 ## 0.3.0 - 2026-09-24
 
 - Per-person workouts: new exercises still mirror to everyone, but any card can be skipped for the person in view, and adding while a partner chip is selected creates a partner-only exercise. Skipped entries collapse to an "Add for …" row.

@@ -39,11 +39,13 @@ fun ChoiceField(label: String, selected: String, choices: List<Pair<String, Stri
 
 @Composable
 fun PartnerManager(partners: List<Partner>, workouts: List<Workout>, save: (Partner) -> Unit, open: (String) -> Unit, back: () -> Unit) {
-    var editing by remember { mutableStateOf<Partner?>(null) }
+    // Saveable id so the editor survives rotation: "" = new partner, otherwise the profile being edited.
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    val newPartner = rememberSaveable { newId() }
     var showArchived by rememberSaveable { mutableStateOf(false) }
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { ManagerHeading("Partner Manager", "Local profiles. Each person keeps their own sets and history.", back) }
-        item { Button(onClick = { editing = Partner(name = "") }, modifier = Modifier.fillMaxWidth()) { Text("Add partner") } }
+        item { Button(onClick = { editingId = "" }, modifier = Modifier.fillMaxWidth()) { Text("Add partner") } }
         item { FilterChip(showArchived, { showArchived = !showArchived }, label = { Text("Show archived") }) }
         if (partners.isEmpty()) item { Text("Add someone you train with. Attach them from inside a workout.") }
         items(partners.filter { showArchived || !it.archived }, key = { it.id }) { p ->
@@ -56,14 +58,16 @@ fun PartnerManager(partners: List<Partner>, workouts: List<Workout>, save: (Part
                     if (p.archived) Text("Archived · history retained")
                     Row(Modifier.horizontalScroll(rememberScrollState())) {
                         TextButton(onClick = { open(p.id) }) { Text("History & stats") }
-                        TextButton(onClick = { editing = p }) { Text("Edit") }
+                        TextButton(onClick = { editingId = p.id }) { Text("Edit") }
                         TextButton(onClick = { save(p.copy(archived = !p.archived)) }) { Text(if (p.archived) "Restore" else "Archive") }
                     }
                 }
             }
         }
     }
-    editing?.let { p -> PartnerEditor(p, { editing = null }) { save(it); editing = null } }
+    editingId?.let { id -> (if (id.isEmpty()) Partner(id = newPartner, name = "") else partners.find { it.id == id })?.let { p ->
+        PartnerEditor(p, { editingId = null }) { save(it); editingId = null }
+    } }
 }
 
 @Composable
@@ -134,7 +138,7 @@ fun PartnerProfile(partner: Partner, workouts: List<Workout>, unit: String, save
 private fun ProfileStat(value: String, label: String, modifier: Modifier) {
     Surface(modifier, color = Panel, shape = MaterialTheme.shapes.large) {
         Column(Modifier.padding(12.dp)) {
-            Text(value, color = Lime, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 1)
+            Text(value, color = Lime, fontSize = 20.sp, fontWeight = FontWeight.Black)
             Text(label, color = Muted, fontSize = 12.sp)
         }
     }

@@ -74,18 +74,22 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
     var tab by rememberSaveable { mutableStateOf(0) }
     var newRoutine by rememberSaveable { mutableStateOf(false) }
     var progressPerson by rememberSaveable { mutableStateOf("") }
+    // Partner profile to return to when Progress was opened from it.
+    var progressReturn by rememberSaveable { mutableStateOf<String?>(null) }
     val current = workouts.find { it.id == opened }
     val profileId = manager?.removePrefix("partner/")?.takeIf { manager?.startsWith("partner/") == true }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(error) { error?.let { snackbar.showSnackbar(it); vm.error.value = null } }
     LaunchedEffect(notice) { notice?.let { snackbar.showSnackbar(it); vm.notice.value = null } }
-    BackHandler(opened != null || manager != null) {
+    BackHandler(opened != null || manager != null || progressReturn != null) {
         when {
             opened != null -> vm.opened.value = null
             profileId != null -> manager = "partners"
-            else -> manager = null
+            manager != null -> manager = null
+            else -> { manager = "partner/$progressReturn"; progressReturn = null }
         }
     }
+    LaunchedEffect(tab, manager) { if (tab != 3 || manager != null) progressReturn = null }
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
@@ -105,7 +109,7 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
             else if (manager == "partners" || (profileId != null && profile == null)) PartnerManager(partners, workouts, vm::savePartner, { manager = "partner/$it" }) { manager = null }
             else if (profile != null) PartnerProfile(profile, workouts, unit, vm::savePartner,
                 openSession = { vm.openSession(it, profile.id) },
-                openProgress = { progressPerson = profile.id; manager = null; tab = 3 }) { manager = "partners" }
+                openProgress = { progressPerson = profile.id; progressReturn = profile.id; manager = null; tab = 3 }) { manager = "partners" }
             else if (manager == "equipment") EquipmentManager(equipment, { vm.saveEquipment(it) }) { manager = null }
             else if (tab == 3) AnalyticsScreen(workouts, partners, unit, progressPerson) { progressPerson = it }
             else LazyColumn(
@@ -248,7 +252,7 @@ private fun WorkoutCard(workout: Workout, action: String, start: () -> Unit, ope
         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(if (workout.isTemplate) "SAVED ROUTINE" else SimpleDateFormat("MMM d · h:mm a", Locale.getDefault()).format(Date(workout.startedAt)), color = Lavender, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             Text(workout.name, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-            Text("${workout.exercises.size} exercises · ${if (workout.isTemplate) workout.exercises.sumOf { it.sets.size } else workout.completedSets} sets · ${workout.unit}", color = Muted)
+            Text("${count(workout.exercises.size, "exercise")} · ${count(if (workout.isTemplate) workout.exercises.sumOf { it.sets.size } else workout.completedSets, "set")} · ${workout.unit}", color = Muted)
             if (workout.exercises.isNotEmpty()) Text(workout.exercises.joinToString("  /  ") { it.exercise.name }, color = Muted, fontSize = 13.sp)
             TextButton(onClick = start) { Icon(Icons.Rounded.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text(action) }
         }

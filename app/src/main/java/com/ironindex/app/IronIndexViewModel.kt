@@ -60,21 +60,8 @@ class IronIndexViewModel @JvmOverloads constructor(application: Application, pri
         require(equipment.type.isNotBlank()) { "Enter the equipment type." }
         onSaved(store.saveEquipment(equipment))
     }
-    fun attachPartner(workoutId: String, partner: Partner, track: Boolean) = edit(workoutId) { w ->
-        val old = w.partners.find { it.id == partner.id }
-        val hasInput = w.exercises.any { it.sets.any { s -> s.participantId == partner.id && (s.complete || s.reps.isNotBlank() || s.weight.isNotBlank()) } }
-        require(track || !hasInput) { "This partner has logged values. Keep tracking enabled to preserve access to their sets." }
-        val participants = w.partners.filterNot { it.id == partner.id } + WorkoutPartner(partner.id, partner.name, track)
-        w.copy(partners = participants, exercises = w.exercises.map { e ->
-            if (track && old?.trackSets != true && e.includes(partner.id) && e.sets.none { it.participantId == partner.id }) e.copy(sets = e.sets + newSetGroup(e.exercise.mode, partner.id)) else e
-        })
-    }
-    fun detachPartner(workoutId: String, partnerId: String) = edit(workoutId) { w ->
-        require(w.exercises.none { it.sets.any { s -> s.participantId == partnerId && (s.complete || s.reps.isNotBlank() || s.weight.isNotBlank()) } }) {
-            "Remove this partner’s entered sets before detaching them."
-        }
-        w.copy(partners = w.partners.filterNot { it.id == partnerId }, exercises = w.exercises.map { e -> e.copy(sets = e.sets.filterNot { it.participantId == partnerId }, skippedBy = e.skippedBy - partnerId) })
-    }
+    fun attachPartner(workoutId: String, partner: Partner, track: Boolean) = edit(workoutId) { it.attachPartner(partner, track) }
+    fun detachPartner(workoutId: String, partnerId: String) = edit(workoutId) { it.detachPartner(partnerId) }
     fun editDetails(workoutId: String, entryId: String, exercise: Exercise, equipment: Equipment?) = run {
         val saved = equipment?.let { store.saveEquipment(it) }
         val normalized = exercise.copy(equipment = "", brand = "", defaultEquipmentId = saved?.id)

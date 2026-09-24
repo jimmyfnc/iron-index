@@ -110,17 +110,44 @@ fun Workout.newEntry(exercise: Exercise, equipment: Equipment?, partnerOnly: Str
     return entry.copy(sets = startingSets(entry, exercise.mode))
 }
 
+/** Hides the entry for one person. Unchecked values (such as routine targets) stay hidden so re-adding restores them. */
 fun Workout.skipExercise(entryId: String, participantId: String?): Workout = copy(exercises = exercises.map { e ->
     if (e.id != entryId) e else {
         require(e.sets.none { it.participantId == participantId && it.complete }) { "Uncheck completed sets before skipping this exercise." }
-        e.copy(sets = e.sets.filterNot { it.participantId == participantId }, skippedBy = (e.skippedBy + participantId.participantKey()).distinct())
+        e.copy(skippedBy = (e.skippedBy + participantId.participantKey()).distinct())
     }
 })
 
-fun Workout.includeExercise(entryId: String, participantId: String?): Workout = copy(exercises = exercises.map { e ->
-    if (e.id != entryId) e else e.copy(skippedBy = e.skippedBy - participantId.participantKey(),
-        sets = if (e.sets.any { it.participantId == participantId }) e.sets else e.sets + newSetGroup(e.exercise.mode, participantId))
-})
+fun Workout.includeExercise(entryId: String, participantId: String?): Workout {
+    require(participantId == null || partners.any { it.id == participantId && it.trackSets }) { "Turn on set tracking for this partner first." }
+    return copy(exercises = exercises.map { e ->
+        if (e.id != entryId) e else e.copy(skippedBy = e.skippedBy - participantId.participantKey(),
+            sets = if (e.sets.any { it.participantId == participantId }) e.sets else e.sets + newSetGroup(e.exercise.mode, participantId))
+    })
+}
+
+private fun Workout.hasInputFor(partnerId: String) = exercises.any { e -> e.includes(partnerId) && e.sets.any { s -> s.participantId == partnerId && (s.complete || s.reps.isNotBlank() || s.weight.isNotBlank()) } }
+
+/** Attaching someone new doesn't hand them exercises you skipped or other partners' partner-only work. */
+fun Workout.attachPartner(partner: Partner, track: Boolean): Workout {
+    val old = partners.find { it.id == partner.id }
+    require(track || !hasInputFor(partner.id)) { "This partner has logged values. Keep tracking enabled to preserve access to their sets." }
+    val participants = partners.filterNot { it.id == partner.id } + WorkoutPartner(partner.id, partner.name, track)
+    return copy(partners = participants, exercises = exercises.map { entry ->
+        val e = if (old == null && !entry.includes(null)) entry.copy(skippedBy = (entry.skippedBy + partner.id).distinct()) else entry
+        if (track && old?.trackSets != true && e.includes(partner.id) && e.sets.none { it.participantId == partner.id }) e.copy(sets = e.sets + newSetGroup(e.exercise.mode, partner.id)) else e
+    })
+}
+
+/** Removes a partner and their sets; drops entries that no one remaining is doing and that have no sets left. */
+fun Workout.detachPartner(partnerId: String): Workout {
+    require(!hasInputFor(partnerId)) { "Remove this partner’s entered sets before detaching them." }
+    val remaining = copy(partners = partners.filterNot { it.id == partnerId }, exercises = exercises.map { e ->
+        e.copy(sets = e.sets.filterNot { it.participantId == partnerId }, skippedBy = e.skippedBy - partnerId)
+    })
+    val people = listOf<String?>(null) + remaining.partners.map { it.id }
+    return remaining.copy(exercises = remaining.exercises.filter { e -> e.sets.isNotEmpty() || people.any { e.includes(it) } })
+}
 
 @Serializable
 data class Workout(

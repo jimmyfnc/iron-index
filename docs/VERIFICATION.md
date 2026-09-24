@@ -1,5 +1,14 @@
 # IronIndex verification
 
+## 0.3.1 - 2026-09-24
+
+- Fixes from a code review of 0.3.0. assembleDebug, all 27 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 9 connected tests passed on emulator-5554.
+- New unit coverage: late-attached partners don't inherit partner-only/skipped work, detaching removes orphan entries, hidden values don't block detach, include requires a tracked partner, skip/re-add restores targets.
+- The partner androidTest now also checks Back from Progress returns to the profile and that sessions opened from a profile select that partner.
+- WorkoutFlowTest.logSaveResumeFinishAndRepeatWorkout timed out once in a full run, then passed twice alone and again in a full rerun. It's a flaky IME/picker timing issue, tracked in ROADMAP.
+- Manual emulator check: skipping hid the exercise for you, and "Add … for you" restored the entered 185 lb.
+- Note: connectedDebugAndroidTest uninstalls the app from the emulator afterward, clearing emulator data (never a phone's).
+
 ## 0.3.0 - 2026-09-24
 
 - assembleDebug, all 23 unit tests, and lintDebug passed (zero errors; 10 dependency warnings and one hint, unchanged).

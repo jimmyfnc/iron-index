@@ -106,7 +106,7 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
     if (adding) ExercisePicker(library, equipment, history, { adding = false }) { exercise, custom, profile -> vm.addExercise(workout.id, exercise, custom, profile, partnerOnly = participantId); adding = false }
     if (renaming) NameDialog("Name your workout", workout.name, { renaming = false }) { name -> vm.edit(workout.id) { it.copy(name = name) }; renaming = false }
     if (saving) NameDialog("Save as a routine", workout.name, { saving = false }) { name -> vm.saveRoutine(workout, name); saving = false }
-    if (finishing) ConfirmDialog("Nice work. Wrap it up?", "${count(workout.completedSets, "set")} for you and ${count(workout.allCompletedSets - workout.completedSets, "partner set")} will be saved. Unchecked sets remain for reference.", "Finish workout", { finishing = false }) { vm.finish(workout.id); finishing = false }
+    if (finishing) ConfirmDialog("Nice work. Wrap it up?", "${count(workout.completedSets, "set")} for you${if (workout.partners.any { it.trackSets }) " and ${count(workout.allCompletedSets - workout.completedSets, "partner set")}" else ""} will be saved. Unchecked sets remain for reference.", "Finish workout", { finishing = false }) { vm.finish(workout.id); finishing = false }
     if (deleting) ConfirmDialog("Delete ${if (workout.isTemplate) "routine" else "workout"}?", "This removes this record from your phone. Other sessions and routines stay saved.", "Delete", { deleting = false }) { vm.delete(workout.id); deleting = false }
     if (managingPartners) WorkoutPartnersDialog(workout, partners, vm) { managingPartners = false }
     if (ordering) ReorderExercises(workout.exercises, { ordering = false }) { ids ->
@@ -120,7 +120,6 @@ private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, participantId
                          skip: (() -> Unit)? = null, personName: String? = null) {
     var editing by rememberSaveable { mutableStateOf(false) }
     var removing by rememberSaveable { mutableStateOf(false) }
-    var skipping by rememberSaveable { mutableStateOf(false) }
     val who = personName ?: "you"
     var showPrevious by rememberSaveable { mutableStateOf(false) }
     var showHistory by rememberSaveable { mutableStateOf(false) }
@@ -169,7 +168,7 @@ private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, participantId
             if (!readOnly) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 TextButton(onClick = { update { e -> e.copy(sets = e.sets + newSetGroup(e.exercise.mode, participantId, e.sets)) } }) { Icon(Icons.Rounded.Add, null); Text(if (entry.exercise.mode == ExerciseMode.BILATERAL) "Add set" else "Add L / R set") }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (skip != null && !workout.isTemplate) TextButton(onClick = { if (sets.any { it.reps.isNotBlank() || it.weight.isNotBlank() }) skipping = true else skip() }, enabled = sets.none { it.complete },
+                    if (skip != null && !workout.isTemplate) TextButton(onClick = skip,
                         modifier = Modifier.semantics { contentDescription = "Skip ${entry.exercise.name} for $who" }) { Text("Skip for $who") }
                     IconButton(onClick = { removing = true }) { Icon(Icons.Rounded.DeleteOutline, "Remove ${entry.exercise.name}", tint = Muted) }
                 }
@@ -189,7 +188,6 @@ private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, participantId
         modeLocked = entry.sets.any { it.complete || it.weight.isNotBlank() || it.reps.isNotBlank() }, equipmentLocked = entry.sets.any { it.complete }, dismiss = { editing = false }) { exercise, profile -> details(exercise, profile); editing = false }
     if (removing) ConfirmDialog("Remove ${entry.exercise.name}?", "This removes its sets for you and all partners from this workout.", "Remove", { removing = false }) { remove(); removing = false }
     if (showHistory) ExerciseHistoryDialog(earlier) { showHistory = false }
-    if (skipping && skip != null) ConfirmDialog("Skip ${entry.exercise.name} for $who?", "Unchecked values for $who on this exercise are cleared. Everyone else keeps theirs.", "Skip", { skipping = false }) { skip(); skipping = false }
 }
 
 @Composable
@@ -200,7 +198,9 @@ private fun SkippedExerciseRow(entry: WorkoutExercise, personName: String?, read
                 Text(entry.exercise.name, fontWeight = FontWeight.Bold, color = Muted)
                 Text("Not in ${personName?.let { "$it’s" } ?: "your"} workout", color = Muted, fontSize = 12.sp)
             }
-            if (!readOnly) TextButton(onClick = include, modifier = Modifier.heightIn(min = 48.dp)) { Icon(Icons.Rounded.Add, null); Text("Add for ${personName ?: "you"}") }
+            if (!readOnly) TextButton(onClick = include, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Add ${entry.exercise.name} for ${personName ?: "you"}" }) {
+                Icon(Icons.Rounded.Add, null); Text("Add for ${personName ?: "you"}")
+            }
         }
     }
 }

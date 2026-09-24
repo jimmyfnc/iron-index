@@ -22,18 +22,47 @@ class PartnerWorkoutTest {
         assertTrue(entry.includes("alex"))
     }
 
-    @Test fun skippingClearsOnlyThatPersonAndIncludingRestoresASetGroup() {
+    @Test fun skippingHidesOnlyThatPersonAndReaddingRestoresTheirTargets() {
         val entry = base.newEntry(curl, null).let { e -> e.copy(sets = e.sets.map { if (it.participantId == null) it.copy(weight = "25") else it.copy(weight = "15") }) }
         val w = base.copy(exercises = listOf(entry))
-        val skipped = w.skipExercise(entry.id, "alex")
-        val after = skipped.exercises.single()
-        assertFalse(after.includes("alex"))
-        assertEquals(listOf("25"), after.sets.map { it.weight })
-        val restored = skipped.includeExercise(entry.id, "alex").exercises.single()
-        assertTrue(restored.includes("alex"))
-        assertEquals(1, restored.sets.count { it.participantId == "alex" })
-        val included = skipped.includeExercise(entry.id, "alex")
-        assertEquals(included, included.includeExercise(entry.id, "alex"))
+        val skipped = w.skipExercise(entry.id, null)
+        assertFalse(skipped.exercises.single().includes(null))
+        assertTrue(skipped.exercises.single().includes("alex"))
+        val restored = skipped.includeExercise(entry.id, null)
+        assertEquals(w.exercises.single().sets, restored.exercises.single().sets)
+        assertEquals(restored, restored.includeExercise(entry.id, null))
+    }
+
+    @Test fun includingRequiresATrackedPartner() {
+        val w = base.copy(exercises = listOf(base.newEntry(curl, null, partnerOnly = "alex")))
+        assertThrows(IllegalArgumentException::class.java) { w.includeExercise(w.exercises.single().id, "sam") }
+        assertThrows(IllegalArgumentException::class.java) { w.includeExercise(w.exercises.single().id, "stranger") }
+    }
+
+    @Test fun partnersAttachedLaterDoNotInheritPartnerOnlyOrSkippedExercises() {
+        val shared = base.newEntry(squat, null)
+        val alexOnly = base.newEntry(curl, null, partnerOnly = "alex")
+        val w = base.copy(exercises = listOf(shared, alexOnly)).attachPartner(Partner("jo", "Jo"), true)
+        assertEquals(1, w.exercises[0].sets.count { it.participantId == "jo" })
+        assertFalse(w.exercises[1].includes("jo"))
+        assertTrue(w.exercises[1].sets.none { it.participantId == "jo" })
+        // Detaching and re-attaching Sam treats them as new: Alex's partner-only work stays private.
+        val again = w.detachPartner("sam").attachPartner(Partner("sam", "Sam"), true)
+        assertFalse(again.exercises[1].includes("sam"))
+    }
+
+    @Test fun detachingTheOnlyPersonOnAnExerciseRemovesTheEmptyEntry() {
+        val shared = base.newEntry(squat, null)
+        val w = base.copy(exercises = listOf(shared, base.newEntry(curl, null, partnerOnly = "alex"))).detachPartner("alex")
+        assertEquals(listOf("Squat"), w.exercises.map { it.exercise.name })
+        assertTrue(w.exercises.single().sets.none { it.participantId == "alex" })
+    }
+
+    @Test fun detachIgnoresHiddenValuesButBlocksVisibleOnes() {
+        val entry = base.newEntry(curl, null).let { e -> e.copy(sets = e.sets.map { if (it.participantId == "alex") it.copy(weight = "15") else it }) }
+        val w = base.copy(exercises = listOf(entry))
+        assertThrows(IllegalArgumentException::class.java) { w.detachPartner("alex") }
+        assertTrue(w.skipExercise(entry.id, "alex").detachPartner("alex").partners.none { it.id == "alex" })
     }
 
     @Test fun completedSetsBlockSkipping() {
