@@ -5,6 +5,8 @@ import java.util.UUID
 
 fun newId(): String = UUID.randomUUID().toString()
 fun count(n: Int, noun: String) = "$n $noun${if (n == 1) "" else "s"}"
+/** Accepts the comma decimal separator that many locales' number keyboards type ("22,5"). */
+fun String.toWeightOrNull(): Double? = trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() && it in 0.0..99999.0 }
 
 @Serializable
 data class Exercise(
@@ -60,7 +62,7 @@ data class SetEntry(
     val groupId: String = id,
 ) {
     fun valid(): Boolean = reps.toIntOrNull()?.let { it in 1..9999 } == true &&
-        weight.toDoubleOrNull()?.let { it.isFinite() && it in 0.0..99999.0 } == true
+        weight.toWeightOrNull() != null
 }
 
 @Serializable
@@ -166,8 +168,15 @@ data class Workout(
     val volume get() = volumeFor(null)
     fun completedSetsFor(participantId: String?) = exercises.sumOf { e -> e.sets.count { it.complete && it.participantId == participantId } }
     fun volumeFor(participantId: String?) = exercises.sumOf { e -> e.sets.filter { it.complete && it.participantId == participantId }.sumOf {
-        (it.weight.toDoubleOrNull() ?: 0.0) * (it.reps.toIntOrNull() ?: 0)
+        (it.weight.toWeightOrNull() ?: 0.0) * (it.reps.toIntOrNull() ?: 0)
     } }
+
+    /** The unit can change until a weight is entered, so no value is ever reinterpreted. */
+    val unitLocked get() = exercises.any { e -> e.sets.any { it.weight.isNotBlank() } }
+
+    /** A draft's date is when training began: stamp it when the first set is checked. */
+    fun stampStart(before: Workout, now: Long = System.currentTimeMillis()): Workout =
+        if (!isTemplate && finishedAt == null && before.allCompletedSets == 0 && allCompletedSets > 0) copy(startedAt = now) else this
 
     fun freshCopy(template: Boolean, title: String = name): Workout = Workout(
         name = title.trim().ifBlank { "My workout" }, isTemplate = template, unit = unit,

@@ -1,5 +1,11 @@
 # IronIndex verification
 
+## 0.3.2 - 2026-09-24
+
+- assembleDebug, all  unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 11 connected tests passed on emulator-5554.
+- New coverage: an empty draft is replaced by a routine start, a draft with exercises is kept until "Discard and start", and the session date stamps once at the first checked set (store test). The UI test covers the Resume / Discard dialog, the in-workout kg switch, "22,5" saved as 22.5, and chips hiding once a weight exists. Unit tests cover comma parsing, the unit lock, start stamping and the regional default unit.
+- Fixed the flaky picker step in WorkoutFlowTest by dismissing the keyboard before tapping the result.
+
 ## 0.3.1 - 2026-09-24
 
 - Fixes from a code review of 0.3.0. assembleDebug, all 27 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 9 connected tests passed on emulator-5554.

@@ -91,11 +91,14 @@ class WorkoutFlowTest {
         compose.onNodeWithText("Add first exercise").performClick()
         awaitText("Find your next move")
         compose.onNodeWithText("Search exercises or muscles").performTextInput("Bench")
+        // The IME animating closed can swallow the first tap; dismiss it and wait for the result row.
+        androidx.test.espresso.Espresso.closeSoftKeyboard()
+        compose.waitForIdle()
         compose.onNodeWithText("Bench press").performClick()
         awaitText("Equipment for Bench press")
         compose.onNodeWithText("Barbell").performClick()
         awaitText("reps")
-        compose.onNodeWithText("lb").performTextInput("135")
+        compose.onNode(hasText("lb") and hasSetTextAction()).performTextInput("135")
         compose.onNodeWithText("reps").performTextInput("8")
         compose.waitUntil(10000) { runCatching { compose.onNodeWithContentDescription("Complete set 1").assertIsEnabled() }.isSuccess }
         compose.onNodeWithContentDescription("Complete set 1").performClick()

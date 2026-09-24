@@ -61,7 +61,7 @@ class AdvancedFlowTest {
         awaitText("Alex")
         compose.onNodeWithText("Alex").performClick()
         compose.onNodeWithText("Alex").assertIsSelected()
-        compose.onAllNodesWithText("lb").onFirst().performScrollTo().performTextInput("20")
+        compose.onAllNodes(hasText("lb") and hasSetTextAction()).onFirst().performScrollTo().performTextInput("20")
         compose.onAllNodesWithText("reps").onFirst().performScrollTo().performTextInput("8")
         compose.waitUntil(10000) { runCatching { compose.onNodeWithContentDescription("Complete set 1 Left").assertIsEnabled() }.isSuccess }
         compose.onNodeWithContentDescription("Complete set 1 Left").performScrollTo().performClick()
@@ -112,6 +112,28 @@ class AdvancedFlowTest {
         compose.onNodeWithText("Old pair day", substring = true).performClick()
         awaitText("SESSION COMPLETE")
         compose.onNodeWithText("Alex").assertIsSelected()
+    }
+
+    @Test fun startingARoutineAsksAboutTheDraftAndUnitsAndCommasWork() {
+        val draft = Workout(name = "Morning draft", exercises = listOf(WorkoutExercise(exercise = Exercise(name = "Row"))))
+        val routine = Workout(name = "Leg day", isTemplate = true, unit = "lb", exercises = listOf(WorkoutExercise(exercise = Exercise(name = "Leg press"))))
+        runBlocking { store.save(draft); store.save(routine) }
+        launch(draft)
+        compose.runOnIdle { vm.opened.value = null; vm.start(routine) }
+        awaitText("Workout in progress")
+        compose.onNodeWithText("Resume current").performClick()
+        awaitText("Morning draft")
+        compose.runOnIdle { vm.start(routine) }
+        awaitText("Workout in progress")
+        compose.onNodeWithText("Discard and start").performClick()
+        awaitText("Leg press")
+        val started = runBlocking { store.workouts.first().single { !it.isTemplate } }
+        assertEquals("Leg day", started.name)
+        compose.onNodeWithContentDescription("Use kg for this workout").performClick()
+        compose.waitUntil(10000) { runBlocking { store.workouts.first().single { !it.isTemplate }.unit == "kg" } }
+        compose.onNode(hasText("kg") and hasSetTextAction()).performTextInput("22,5")
+        compose.waitUntil(10000) { runBlocking { store.workouts.first().single { !it.isTemplate }.exercises.single().sets.single().weight == "22.5" } }
+        compose.onAllNodesWithContentDescription("Use lb for this workout").assertCountEquals(0)
     }
 
     @Test fun longPressDragReordersAndPreservesSetValues() {

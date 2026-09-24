@@ -11,7 +11,7 @@ import kotlin.math.max
 data class PerformanceKey(val exerciseId: String, val equipmentId: String?, val mode: ExerciseMode, val side: Side)
 data class LoggedSet(val workout: Workout, val entry: WorkoutExercise, val set: SetEntry) {
     val key get() = PerformanceKey(entry.exercise.id, entry.equipmentKey(), entry.exercise.mode, set.side)
-    val weightKg get() = (set.weight.toDoubleOrNull() ?: 0.0) * if (workout.unit == "lb") 0.45359237 else 1.0
+    val weightKg get() = (set.weight.toWeightOrNull() ?: 0.0) * if (workout.unit == "lb") 0.45359237 else 1.0
     val reps get() = set.reps.toIntOrNull() ?: 0
     val volumeKg get() = weightKg * reps
     val estimatedMaxKg: Double? get() = when {

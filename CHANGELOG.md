@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.2 - 2026-09-24
+
+- Starting a routine or repeating a session while another workout is in progress now asks: resume it, or discard it and start the new one. An empty draft is replaced automatically instead of hijacking the start.
+- A session's date is set when you check your first set, so a draft started days earlier no longer lands on the wrong day in History, Progress and "Last time".
+- Switch lb/kg inside a workout until any weight is entered. New installs default to kg outside the US, Liberia and Myanmar.
+- Weights typed with a decimal comma ("22,5") are accepted.
+- History cards count partner sets ("3 sets + 2 partner"), and the home card no longer offers to resume an empty draft.
+
 ## 0.3.1 - 2026-09-24
 
 - Partner-only and skipped exercises no longer appear for partners who join later or rejoin.

@@ -6,13 +6,16 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+/** Pounds only where they're the everyday unit; everyone else starts in kilograms. */
+fun defaultUnit(country: String = java.util.Locale.getDefault().country) = if (country in setOf("US", "LR", "MM")) "lb" else "kg"
+
 class IronIndexViewModel @JvmOverloads constructor(application: Application, private val store: WorkoutStore = WorkoutStore(application)) : AndroidViewModel(application) {
     val workouts = store.workouts.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val exercises = store.exercises.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), starterExercises)
     val equipment = store.equipment.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val partners = store.partners.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     private val preferences = application.getSharedPreferences("ironindex", 0)
-    val unit = MutableStateFlow(preferences.getString("unit", "lb") ?: "lb")
+    val unit = MutableStateFlow(preferences.getString("unit", null) ?: defaultUnit())
     val error = MutableStateFlow<String?>(null)
     val notice = MutableStateFlow<String?>(null)
     val opened = MutableStateFlow<String?>(null)
@@ -25,7 +28,17 @@ class IronIndexViewModel @JvmOverloads constructor(application: Application, pri
             error.value = if (e is IllegalArgumentException) e.message else "Couldn’t save your change. Please try again."
         }
     } }
-    fun start(source: Workout? = null) = run { opened.value = store.start(source, unit.value) }
+    /** Routine or session waiting for the user to resolve an in-progress draft. */
+    val pendingStart = MutableStateFlow<Workout?>(null)
+    fun start(source: Workout? = null, replaceDraft: Boolean = false) = run {
+        if (source != null && !replaceDraft && store.activeDraft()?.exercises?.isNotEmpty() == true) {
+            pendingStart.value = source
+            return@run
+        }
+        pendingStart.value = null
+        openedParticipant.value = null
+        opened.value = store.start(source, unit.value, replaceDraft)
+    }
     fun setUnit(value: String) { unit.value = value; preferences.edit().putString("unit", value).apply() }
     fun createTemplate(name: String) = run {
         val workout = Workout(name = name.trim(), isTemplate = true, unit = unit.value)

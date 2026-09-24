@@ -9,8 +9,6 @@ Effort: 🟢 small (hours) · 🟡 medium (a day or two) · 🔴 large (multi-da
 
 | Idea | Effort | Notes |
 |---|---|---|
-| Fix workout start: "Start routine"/"Repeat" silently resume an old draft; session date is draft creation, not first set | 🟢 | E2E review 2026-09-24. Offer Resume / Discard / Replace. `WorkoutStore.start`. |
-| Change lb/kg inside a workout before any set is logged; accept comma decimals ("22,5") | 🟢 | E2E review. Comma-locale keyboards can't log decimals today. |
 | Edit finished sessions (fix a typo or an unchecked set) | 🟡 | E2E review. Finished sessions are read-only now. |
 | Faster logging: prefill from last session, keyboard Next/Done that checks the set, pinned person chips, compact cards | 🟡 | E2E review gym-friction list. |
 | Exercise identity: "Replace exercise" vs "Edit library exercise" (renames currently rewrite history grouping) | 🟡 | E2E review. `editDetails` saves over the library ID. |
@@ -34,7 +32,6 @@ Effort: 🟢 small (hours) · 🟡 medium (a day or two) · 🔴 large (multi-da
 |---|---|---|
 | Performance: decode history off the main thread, compute per-card history once, debounce keystroke writes | 🟡 | E2E review. Will lag as history grows. |
 | Robustness: skip unreadable saved rows instead of crashing the flow | 🟢 | E2E review. `WorkoutStore` decode has no error handling. |
-| Stabilize flaky WorkoutFlowTest picker/IME timing | 🟢 | Seen once in 0.3.1 verification. |
 | Brief empty Partner Manager flash when restoring a profile screen | 🟢 | Partners flow starts empty before Room emits. |
 | Accessibility: set fields labelled only "lb"/"reps" | 🟢 | Add set number and exercise name to descriptions. |
 | Dependency updates flagged by lint (10 warnings) | 🟢 | Keep aligned with the Discipline stack. |

@@ -70,6 +70,7 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
     val unit by vm.unit.collectAsStateWithLifecycle()
     val equipment by vm.equipment.collectAsStateWithLifecycle()
     val partners by vm.partners.collectAsStateWithLifecycle()
+    val pendingStart by vm.pendingStart.collectAsStateWithLifecycle()
     var manager by rememberSaveable { mutableStateOf<String?>(null) }
     var tab by rememberSaveable { mutableStateOf(0) }
     var newRoutine by rememberSaveable { mutableStateOf(false) }
@@ -142,7 +143,8 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
                             }
                         }
                         item {
-                            val active = workouts.firstOrNull { !it.isTemplate && it.finishedAt == null }
+                            // An empty draft isn't worth resuming; Start reuses it anyway.
+                            val active = workouts.firstOrNull { !it.isTemplate && it.finishedAt == null && it.exercises.isNotEmpty() }
                             Surface(color = Lime, shape = RoundedCornerShape(28.dp)) {
                                 Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -150,7 +152,7 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
                                         Icon(Icons.Rounded.Bolt, null, tint = Ink)
                                     }
                                     Text(active?.name ?: "Show up.\nMake it count.", color = Ink, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 36.sp)
-                                    Text(active?.let { "${count(it.completedSets, "set")} logged · saved on this phone" } ?: "No plan needed. Build your workout as you go.", color = Ink)
+                                    Text(active?.let { "${count(it.allCompletedSets, "set")} logged · saved on this phone" } ?: "No plan needed. Build your workout as you go.", color = Ink)
                                     Button(onClick = { vm.start() }, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
                                         colors = ButtonDefaults.buttonColors(containerColor = Ink, contentColor = Lime)) {
                                         Icon(Icons.Rounded.PlayArrow, null); Spacer(Modifier.width(8.dp))
@@ -214,6 +216,13 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
             }
         }
     }
+    pendingStart?.let { source ->
+        val draft = workouts.firstOrNull { !it.isTemplate && it.finishedAt == null }
+        AlertDialog(onDismissRequest = { vm.pendingStart.value = null }, title = { Text("Workout in progress") }, text = {
+            Text("“${draft?.name ?: "Your workout"}” has ${count(draft?.exercises?.size ?: 0, "exercise")} and ${count(draft?.allCompletedSets ?: 0, "set")} logged. Resume it, or discard it and start “${source.name}”?")
+        }, confirmButton = { TextButton(onClick = { vm.pendingStart.value = null; draft?.let { vm.opened.value = it.id } }) { Text("Resume current") } },
+            dismissButton = { TextButton(onClick = { vm.start(source, replaceDraft = true) }) { Text("Discard and start", color = Coral) } })
+    }
     if (newRoutine) NameDialog("Create a routine", "", { newRoutine = false }) { name -> vm.createTemplate(name); newRoutine = false }
 }
 
@@ -252,7 +261,8 @@ private fun WorkoutCard(workout: Workout, action: String, start: () -> Unit, ope
         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(if (workout.isTemplate) "SAVED ROUTINE" else SimpleDateFormat("MMM d · h:mm a", Locale.getDefault()).format(Date(workout.startedAt)), color = Lavender, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             Text(workout.name, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-            Text("${count(workout.exercises.size, "exercise")} · ${count(if (workout.isTemplate) workout.exercises.sumOf { it.sets.size } else workout.completedSets, "set")} · ${workout.unit}", color = Muted)
+            val partnerSets = workout.allCompletedSets - workout.completedSets
+            Text("${count(workout.exercises.size, "exercise")} · ${count(if (workout.isTemplate) workout.exercises.sumOf { it.sets.size } else workout.completedSets, "set")}${if (!workout.isTemplate && partnerSets > 0) " + $partnerSets partner" else ""} · ${workout.unit}", color = Muted)
             if (workout.exercises.isNotEmpty()) Text(workout.exercises.joinToString("  /  ") { it.exercise.name }, color = Muted, fontSize = 13.sp)
             TextButton(onClick = start) { Icon(Icons.Rounded.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text(action) }
         }

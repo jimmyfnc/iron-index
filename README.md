@@ -1,7 +1,7 @@
 # IronIndex
 
 A colorful, standalone Android workout tracker. Built with Kotlin, Jetpack Compose
-and Room. Works offline with no account required. Current version: **0.3.1**.
+and Room. Works offline with no account required. Current version: **0.3.2**.
 
 ## Included
 
@@ -9,7 +9,7 @@ and Room. Works offline with no account required. Current version: **0.3.1**.
 - Custom exercises, reps, weight, checked sets, equipment, brand/model, optional muscle group.
 - Reusable routines: create ahead of time or save from a live/completed workout.
 - Workout history and repeat-session flow.
-- Per-workout lb/kg units and starter exercise library.
+- Per-workout lb/kg units (switchable until a weight is entered; default follows your region), comma or dot decimals, and a starter exercise library.
 - Dark ink, lime, lavender and coral interface.
 - Drag-and-drop exercise ordering via Reorder, with accessible up/down alternatives.
 - Equipment library: separate brand, model, and optional gym/nickname.

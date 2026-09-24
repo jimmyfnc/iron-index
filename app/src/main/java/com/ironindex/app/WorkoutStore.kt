@@ -92,11 +92,23 @@ class WorkoutStore(context: Context, databaseName: String = "iron-index.db") {
     private suspend fun write(workout: Workout) = dao.put(WorkoutRow(workout.id, json.encodeToString(workout)))
     suspend fun save(workout: Workout) = mutex.withLock { write(workout) }
     suspend fun edit(id: String, transform: (Workout) -> Workout) = mutex.withLock {
-        dao.get(id)?.let { row -> write(transform(json.decodeFromString(row.payload)).copy(updatedAt = System.currentTimeMillis())) }
+        dao.get(id)?.let { row ->
+            val before = json.decodeFromString<Workout>(row.payload)
+            write(transform(before).stampStart(before).copy(updatedAt = System.currentTimeMillis()))
+        }
     }
-    suspend fun start(source: Workout?, unit: String): String = mutex.withLock {
-        val existing = dao.all().map { json.decodeFromString<Workout>(it.payload) }.firstOrNull { !it.isTemplate && it.finishedAt == null }
-        if (existing != null) return@withLock existing.id
+    private suspend fun draft() = dao.all().map { json.decodeFromString<Workout>(it.payload) }.firstOrNull { !it.isTemplate && it.finishedAt == null }
+    suspend fun activeDraft(): Workout? = mutex.withLock { draft() }
+    /**
+     * Opens the one unfinished workout, or creates it. Starting a routine/repeat replaces an empty draft;
+     * a draft with exercises is replaced only when [replaceDraft] is true (the user chose to discard it).
+     */
+    suspend fun start(source: Workout?, unit: String, replaceDraft: Boolean = false): String = mutex.withLock {
+        val existing = draft()
+        if (existing != null) {
+            if (!replaceDraft && (source == null || existing.exercises.isNotEmpty())) return@withLock existing.id
+            dao.delete(existing.id)
+        }
         val workout = source?.freshCopy(false) ?: Workout(name = "Freestyle workout", unit = unit)
         write(workout)
         workout.id

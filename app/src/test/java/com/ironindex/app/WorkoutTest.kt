@@ -44,4 +44,29 @@ class WorkoutTest {
             sets = listOf(SetEntry(reps = "", weight = "2.")))))
         assertEquals(workout, Json.decodeFromString<Workout>(Json.encodeToString(workout)))
     }
+
+    @Test fun commaDecimalsAreAcceptedAndUnitLocksOnceAWeightIsEntered() {
+        assertEquals(22.5, "22,5".toWeightOrNull()!!, 0.0)
+        assertTrue(SetEntry(reps = "5", weight = "22,5").valid())
+        assertNull("1,2,3".toWeightOrNull())
+        val w = Workout(name = "U", exercises = listOf(WorkoutExercise(exercise = Exercise(name = "Row"), sets = listOf(SetEntry(reps = "5")))))
+        assertFalse(w.unitLocked)
+        assertTrue(w.copy(exercises = w.exercises.map { it.copy(sets = listOf(SetEntry(weight = "20"))) }).unitLocked)
+    }
+
+    @Test fun sessionDateIsStampedAtTheFirstCheckedSetOnly() {
+        val draft = Workout(name = "D", startedAt = 1, exercises = listOf(WorkoutExercise(exercise = Exercise(name = "Row"), sets = listOf(SetEntry(reps = "5", weight = "20")))))
+        val checked = draft.copy(exercises = draft.exercises.map { it.copy(sets = it.sets.map { s -> s.copy(complete = true) }) })
+        assertEquals(500, checked.stampStart(draft, now = 500).startedAt)
+        assertEquals(1, draft.stampStart(draft, now = 500).startedAt)
+        assertEquals(1, checked.stampStart(checked, now = 500).startedAt)
+        assertEquals(1, checked.copy(finishedAt = 2).stampStart(draft, now = 500).startedAt)
+        assertEquals(1, checked.copy(isTemplate = true).stampStart(draft, now = 500).startedAt)
+    }
+
+    @Test fun defaultUnitFollowsRegion() {
+        assertEquals("lb", defaultUnit("US"))
+        assertEquals("kg", defaultUnit("DE"))
+        assertEquals("kg", defaultUnit("GB"))
+    }
 }

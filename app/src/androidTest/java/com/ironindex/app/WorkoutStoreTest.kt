@@ -38,4 +38,31 @@ class WorkoutStoreTest {
             } finally { store.delete(next) }
         } finally { store.close(); context.deleteDatabase(databaseName) }
     }
+
+    @Test fun routinesReplaceEmptyDraftsButKeepRealOnesUntilTheUserDecides() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val databaseName = "start-${newId()}.db"
+        val store = WorkoutStore(context, databaseName)
+        val push = Workout(name = "Push", isTemplate = true, unit = "kg", exercises = listOf(WorkoutExercise(exercise = Exercise(name = "Press"))))
+        val pull = push.copy(id = newId(), name = "Pull")
+        try {
+            val empty = store.start(null, "lb")
+            val fromPush = store.start(push, "lb")
+            assertNotEquals(empty, fromPush)
+            assertTrue(store.workouts.first().none { it.id == empty })
+            assertEquals(fromPush, store.start(pull, "lb"))
+            assertEquals(fromPush, store.activeDraft()?.id)
+            val fromPull = store.start(pull, "lb", replaceDraft = true)
+            assertNotEquals(fromPush, fromPull)
+            assertEquals(listOf("Pull"), store.workouts.first().filter { !it.isTemplate }.map { it.name })
+            // The session date moves to the first checked set, and stays put afterwards.
+            val created = store.activeDraft()!!.startedAt
+            Thread.sleep(25)
+            store.edit(fromPull) { w -> w.copy(exercises = w.exercises.map { e -> e.copy(sets = listOf(SetEntry(reps = "5", weight = "60", complete = true))) }) }
+            val stamped = store.activeDraft()!!.startedAt
+            assertTrue(stamped > created)
+            store.edit(fromPull) { w -> w.copy(exercises = w.exercises.map { e -> e.copy(sets = e.sets + SetEntry(reps = "5", weight = "60", complete = true)) }) }
+            assertEquals(stamped, store.activeDraft()!!.startedAt)
+        } finally { store.close(); context.deleteDatabase(databaseName) }
+    }
 }

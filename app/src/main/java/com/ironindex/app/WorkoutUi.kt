@@ -56,6 +56,11 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
                 TextButton(onClick = { ordering = true }, enabled = workout.exercises.size > 1) { Icon(Icons.Rounded.SwapVert, null); Text("Reorder") }
                 if (!workout.isTemplate) TextButton(onClick = { managingPartners = true }) { Icon(Icons.Rounded.People, null); Text("Partners") }
             }
+            if (!readOnly && !workout.unitLocked) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Weight unit", color = Muted, fontSize = 13.sp)
+                listOf("lb", "kg").forEach { value -> FilterChip(workout.unit == value, { vm.edit(workout.id) { it.copy(unit = value) } }, label = { Text(value) },
+                    modifier = Modifier.semantics { contentDescription = "Use $value for this workout" }) }
+            }
             if (workout.partners.isNotEmpty()) {
                 Text("Training with ${workout.partners.joinToString { it.name }}", color = Lavender)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -215,8 +220,8 @@ private fun SetRow(number: Int, set: SetEntry, unit: String, template: Boolean, 
         if (suffix.isNotEmpty()) Text("Set $number ·$suffix", color = if (set.side == Side.LEFT) Lavender else Coral, fontWeight = FontWeight.Bold)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (set.side == Side.BOTH) Text("$number", color = if (set.complete) Lime else Muted, modifier = Modifier.width(20.dp))
-            OutlinedTextField(value = weight, onValueChange = { value -> weight = value; onChange { it.copy(weight = value, complete = false) } },
-                label = { Text(unit) }, singleLine = true, readOnly = readOnly, isError = weight.isNotBlank() && weight.toDoubleOrNull()?.let { it.isFinite() && it in 0.0..99999.0 } != true,
+            OutlinedTextField(value = weight, onValueChange = { raw -> val value = raw.replace(',', '.'); weight = value; onChange { it.copy(weight = value, complete = false) } },
+                label = { Text(unit) }, singleLine = true, readOnly = readOnly, isError = weight.isNotBlank() && weight.toWeightOrNull() == null,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
             OutlinedTextField(value = reps, onValueChange = { value -> reps = value; onChange { it.copy(reps = value, complete = false) } },
                 label = { Text("reps") }, singleLine = true, readOnly = readOnly, isError = reps.isNotBlank() && reps.toIntOrNull()?.let { it in 1..9999 } != true,
@@ -225,7 +230,7 @@ private fun SetRow(number: Int, set: SetEntry, unit: String, template: Boolean, 
                 onCheckedChange = { checked -> onChange { it.copy(complete = checked && it.valid()) } }, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = "Complete set $number$suffix" })
             if (!readOnly) IconButton(onClick = { deleting = true }) { Icon(Icons.Rounded.Close, "Delete set $number$suffix", tint = Muted) }
         }
-        if ((weight.isNotBlank() && weight.toDoubleOrNull()?.let { it.isFinite() && it in 0.0..99999.0 } != true) || (reps.isNotBlank() && reps.toIntOrNull()?.let { it in 1..9999 } != true)) Text("Use weight 0–99,999 and whole reps 1–9,999.", color = Coral, fontSize = 12.sp)
+        if ((weight.isNotBlank() && weight.toWeightOrNull() == null) || (reps.isNotBlank() && reps.toIntOrNull()?.let { it in 1..9999 } != true)) Text("Use weight 0–99,999 and whole reps 1–9,999.", color = Coral, fontSize = 12.sp)
     }
     if (deleting) ConfirmDialog("Remove set $number$suffix?", "Only this entry is removed. Other sides and people stay saved.", "Remove", { deleting = false }) { onDelete(); deleting = false }
 }
