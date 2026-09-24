@@ -75,12 +75,20 @@ See
 - `WorkoutUi.kt`, `ManagementUi.kt`, `ReorderUi.kt`: logging, catalogs and ordering.
 - `Analytics.kt`, `AnalyticsUi.kt`: metric definitions and progress screens.
 - `app/schemas`: Room schema history; commit schema changes with migrations.
+- `.githooks/`, `scripts/install-hooks.sh`: release hygiene and doc-drift checks.
+- `docs/ROADMAP.md`, `docs/brainstorms/`, `docs/archive/`: backlog, live and shipped designs.
 - `docs/PRODUCT.md`: first-version scope and future Discipline integration.
 
 Data is stored only on this device. Uninstalling clears it; backup export and cloud
 sync are not implemented yet. This is a development build, not a signed store release.
-No Discipline credentials or source files are required. The repository is initialized
-locally; a GitHub remote has not been created.
+No Discipline credentials or source files are required. Source lives in the private
+GitHub repo `jimmyfnc/iron-index`; releases are tagged `vX.Y.Z`.
+
+## Contributing
+
+Run `./scripts/install-hooks.sh` once per clone. The pre-commit hook blocks app changes
+without a version bump and CHANGELOG entry, catches version drift in README/CHANGELOG,
+destructive Room migrations, unexported schemas, and committed secrets. See AGENTS.md.
 
 Upgrading from 0.1.0 preserves the local database through a tested Room migration.
 Install the new APK over the existing installation; do not uninstall first. Existing
