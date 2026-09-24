@@ -1,5 +1,11 @@
 # IronIndex verification
 
+## 0.3.4 - 2026-09-24
+
+- assembleDebug, all 33 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 12 connected tests passed on emulator-5554.
+- New unit coverage: malformed JSON and unknown enum values are skipped and reported while valid rows load. The extracted earlier-session helpers match the previous behavior.
+- The existing UI tests still find weight/reps fields by label with the added accessibility descriptions.
+
 ## 0.3.3 - 2026-09-24
 
 - assembleDebug, all 31 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 12 connected tests passed on emulator-5554.

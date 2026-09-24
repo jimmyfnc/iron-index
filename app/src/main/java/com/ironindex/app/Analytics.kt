@@ -26,11 +26,16 @@ fun completedHistory(workouts: List<Workout>, participantId: String? = null): Li
     .sortedBy { it.startedAt }
     .flatMap { w -> w.exercises.flatMap { e -> e.sets.filter { it.complete && it.valid() && it.participantId == participantId }.map { LoggedSet(w, e, it) } } }
 
+/** One person's completed sets of [entry] (same exercise, equipment and side mode) from sessions before [current]. */
+fun earlierSets(logs: List<LoggedSet>, current: Workout, entry: WorkoutExercise): List<LoggedSet> = logs.filter {
+    it.workout.id != current.id && it.workout.startedAt < current.startedAt &&
+        it.entry.exercise.id == entry.exercise.id && it.entry.equipmentKey() == entry.equipmentKey() && it.entry.exercise.mode == entry.exercise.mode
+}
+
+fun lastSession(earlier: List<LoggedSet>): List<LoggedSet> = earlier.groupBy { it.workout.id }.values.maxByOrNull { it.first().workout.startedAt }.orEmpty()
+
 fun previousSession(workouts: List<Workout>, current: Workout, entry: WorkoutExercise, participantId: String?): List<LoggedSet> =
-    completedHistory(workouts, participantId).filter {
-        it.workout.id != current.id && it.workout.startedAt < current.startedAt &&
-            it.entry.exercise.id == entry.exercise.id && it.entry.equipmentKey() == entry.equipmentKey() && it.entry.exercise.mode == entry.exercise.mode
-    }.groupBy { it.workout.id }.values.maxByOrNull { it.first().workout.startedAt }.orEmpty()
+    lastSession(earlierSets(completedHistory(workouts, participantId), current, entry))
 
 data class PersonSummary(val sessions: Int, val sets: Int, val volumeKg: Double, val lastSession: Long?)
 fun personSummary(logs: List<LoggedSet>) = PersonSummary(logs.map { it.workout.id }.distinct().size, logs.size, logs.sumOf { it.volumeKg }, logs.maxOfOrNull { it.workout.startedAt })

@@ -30,9 +30,7 @@ Effort: 🟢 small (hours) · 🟡 medium (a day or two) · 🔴 large (multi-da
 
 | Task | Effort | Notes |
 |---|---|---|
-| Performance: decode history off the main thread, compute per-card history once, debounce keystroke writes | 🟡 | E2E review. Will lag as history grows. |
-| Robustness: skip unreadable saved rows instead of crashing the flow | 🟢 | E2E review. `WorkoutStore` decode has no error handling. |
+| Performance: debounce keystroke writes; normalize tables if history gets very large | 🟡 | Off-main decode and once-per-person history shipped in 0.3.4. |
 | Brief empty Partner Manager flash when restoring a profile screen | 🟢 | Partners flow starts empty before Room emits. |
-| Accessibility: set fields labelled only "lb"/"reps" | 🟢 | Add set number and exercise name to descriptions. |
 | Dependency updates flagged by lint (10 warnings) | 🟢 | Keep aligned with the Discipline stack. |
 | Normalize Room tables when history grows | 🔴 | Current aggregate-per-row design is intentional for now. |

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.4 - 2026-09-24
+
+- A damaged or unreadable saved record is skipped instead of crashing the app; everything else still loads.
+- Typing in a workout stays quick as history grows: saved data is decoded off the main thread, and "Last time" / history are built once per person from finished sessions instead of per card on every keystroke.
+- Screen readers announce each weight and reps field with its exercise, set number and side (for example "Bench press set 2 Left weight in kg").
+
 ## 0.3.3 - 2026-09-24
 
 - Renaming an exercise inside a workout now asks whether it's the same movement or a different one. "Different exercise" starts its own history instead of renaming the library exercise and merging both histories into one chart and PR list. Capitalization and spacing fixes don't ask.

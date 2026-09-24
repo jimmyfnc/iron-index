@@ -1,7 +1,7 @@
 # IronIndex
 
 A colorful, standalone Android workout tracker. Built with Kotlin, Jetpack Compose
-and Room. Works offline with no account required. Current version: **0.3.3**.
+and Room. Works offline with no account required. Current version: **0.3.4**.
 
 ## Included
 

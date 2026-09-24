@@ -11,6 +11,9 @@ fun defaultUnit(country: String = java.util.Locale.getDefault().country) = if (c
 
 class IronIndexViewModel @JvmOverloads constructor(application: Application, private val store: WorkoutStore = WorkoutStore(application)) : AndroidViewModel(application) {
     val workouts = store.workouts.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    /** Finished sessions only; emits only when history changes, not on every keystroke in a draft. */
+    val history = workouts.map { all -> all.filter { !it.isTemplate && it.finishedAt != null } }.distinctUntilChanged()
+        .flowOn(kotlinx.coroutines.Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val exercises = store.exercises.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), starterExercises)
     val equipment = store.equipment.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val partners = store.partners.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

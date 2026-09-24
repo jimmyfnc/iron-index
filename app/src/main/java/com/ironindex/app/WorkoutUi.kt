@@ -41,6 +41,8 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
     val tracked = workout.partners.filter { it.trackSets }
     val personName = tracked.find { it.id == athlete }?.name
     val athleteProfile = partners.find { it.id == athlete }
+    // Built once per person from finished sessions only, so typing in this draft doesn't rebuild it.
+    val personLogs = remember(history, participantId) { completedHistory(history, participantId) }
     LaunchedEffect(workout.id) { vm.openedParticipant.value = null }
     LaunchedEffect(workout.partners) { if (athlete.isNotBlank() && workout.partners.none { it.id == athlete && it.trackSets }) athlete = "" }
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxSize().imePadding()) {
@@ -81,10 +83,8 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
         items(workout.exercises, key = { it.id }) { entry ->
             if (!entry.includes(participantId)) SkippedExerciseRow(entry, personName, readOnly) { vm.includeExercise(workout.id, entry.id, participantId) }
             else {
-                val previous = remember(history, workout.id, entry.exercise.id, entry.equipmentKey(), entry.exercise.mode, participantId) { previousSession(history, workout, entry, participantId) }
-                val earlier = remember(history, workout.id, entry.exercise.id, entry.equipmentKey(), entry.exercise.mode, participantId) {
-                    completedHistory(history, participantId).filter { it.workout.id != workout.id && it.workout.startedAt < workout.startedAt && it.entry.exercise.id == entry.exercise.id && it.entry.equipmentKey() == entry.equipmentKey() && it.entry.exercise.mode == entry.exercise.mode }
-                }
+                val earlier = remember(personLogs, workout.id, workout.startedAt, entry.exercise.id, entry.equipmentKey(), entry.exercise.mode) { earlierSets(personLogs, workout, entry) }
+                val previous = remember(earlier) { lastSession(earlier) }
                 ExerciseCard(entry, workout, participantId, previous, earlier, equipment,
                     update = { transform -> vm.edit(workout.id) { w -> w.copy(exercises = w.exercises.map { if (it.id == entry.id) transform(it) else it }) } },
                     details = { exercise, profile -> vm.editDetails(workout.id, entry.id, exercise, profile) },
@@ -165,7 +165,7 @@ private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, participantId
             if (!readOnly) Text(if (workout.isTemplate) "Optional targets prefill your next session." else if (entry.exercise.mode != ExerciseMode.BILATERAL) "Load per side · 0 for bodyweight" else "Weight as logged · 0 for bodyweight", color = Muted, fontSize = 12.sp)
             sets.forEach { set ->
                 key(set.id) {
-                    SetRow(groups.indexOf(set.groupId) + 1, set, workout.unit, workout.isTemplate, readOnly,
+                    SetRow(entry.exercise.name, groups.indexOf(set.groupId) + 1, set, workout.unit, workout.isTemplate, readOnly,
                         onChange = { transform -> update { e -> e.copy(sets = e.sets.map { if (it.id == set.id) transform(it) else it }) } },
                         onDelete = { update { e -> e.copy(sets = e.sets.filterNot { it.id == set.id }) } })
                 }
@@ -211,7 +211,7 @@ private fun SkippedExerciseRow(entry: WorkoutExercise, personName: String?, read
 }
 
 @Composable
-private fun SetRow(number: Int, set: SetEntry, unit: String, template: Boolean, readOnly: Boolean, onChange: ((SetEntry) -> SetEntry) -> Unit, onDelete: () -> Unit) {
+private fun SetRow(exerciseName: String, number: Int, set: SetEntry, unit: String, template: Boolean, readOnly: Boolean, onChange: ((SetEntry) -> SetEntry) -> Unit, onDelete: () -> Unit) {
     var deleting by rememberSaveable { mutableStateOf(false) }
     var weight by rememberSaveable(set.id) { mutableStateOf(set.weight) }
     var reps by rememberSaveable(set.id) { mutableStateOf(set.reps) }
@@ -222,10 +222,12 @@ private fun SetRow(number: Int, set: SetEntry, unit: String, template: Boolean, 
             if (set.side == Side.BOTH) Text("$number", color = if (set.complete) Lime else Muted, modifier = Modifier.width(20.dp))
             OutlinedTextField(value = weight, onValueChange = { raw -> val value = raw.replace(',', '.'); weight = value; onChange { it.copy(weight = value, complete = false) } },
                 label = { Text(unit) }, singleLine = true, readOnly = readOnly, isError = weight.isNotBlank() && weight.toWeightOrNull() == null,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1f).semantics { contentDescription = "$exerciseName set $number$suffix weight in $unit" })
             OutlinedTextField(value = reps, onValueChange = { value -> reps = value; onChange { it.copy(reps = value, complete = false) } },
                 label = { Text("reps") }, singleLine = true, readOnly = readOnly, isError = reps.isNotBlank() && reps.toIntOrNull()?.let { it in 1..9999 } != true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1f).semantics { contentDescription = "$exerciseName set $number$suffix reps" })
             if (!template) Checkbox(checked = set.complete, enabled = !readOnly && (set.complete || set.valid()),
                 onCheckedChange = { checked -> onChange { it.copy(complete = checked && it.valid()) } }, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = "Complete set $number$suffix" })
             if (!readOnly) IconButton(onClick = { deleting = true }) { Icon(Icons.Rounded.Close, "Delete set $number$suffix", tint = Muted) }

@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.room.*
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -41,6 +43,12 @@ interface WorkoutDao {
 }
 
 val storageJson = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+/** Decodes each stored row, skipping (and reporting) any that can't be read so one bad row can't take down the app. */
+inline fun <T> List<String>.decodeEach(onError: (Throwable) -> Unit = {}, decode: (String) -> T): List<T> =
+    mapNotNull { payload -> try { decode(payload) } catch (e: Exception) { onError(e); null } }
+
+private fun logUnreadable(e: Throwable) { runCatching { android.util.Log.w("IronIndex", "Skipped an unreadable saved row", e) } }
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -80,15 +88,17 @@ class WorkoutStore(context: Context, databaseName: String = "iron-index.db") {
     private val dao = db.dao()
     private val mutex = Mutex()
     private val json = storageJson
-    val workouts = dao.observeWorkouts().map { rows -> rows.map { json.decodeFromString<Workout>(it.payload) }.sortedByDescending { it.startedAt } }
+    val workouts = dao.observeWorkouts().map { rows -> rows.map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Workout>(it) }.sortedByDescending { it.startedAt } }
+        .flowOn(Dispatchers.Default)
     val exercises = dao.observeExercises().map { rows ->
-        (rows.map { json.decodeFromString<Exercise>(it.payload) } + starterExercises).distinctBy { it.id }.sortedBy { it.name.lowercase() }
-    }
+        (rows.map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Exercise>(it) } + starterExercises).distinctBy { it.id }.sortedBy { it.name.lowercase() }
+    }.flowOn(Dispatchers.Default)
     val equipment = dao.observeEquipment().map { rows ->
-        (rows.map { json.decodeFromString<Equipment>(it.payload) } + starterExercises.mapNotNull { legacyEquipment(it) })
+        (rows.map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Equipment>(it) } + starterExercises.mapNotNull { legacyEquipment(it) })
             .distinctBy { it.id }.sortedBy { it.label.lowercase() }
-    }
-    val partners = dao.observePartners().map { rows -> rows.map { json.decodeFromString<Partner>(it.payload) }.sortedBy { it.name.lowercase() } }
+    }.flowOn(Dispatchers.Default)
+    val partners = dao.observePartners().map { rows -> rows.map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Partner>(it) }.sortedBy { it.name.lowercase() } }
+        .flowOn(Dispatchers.Default)
     private suspend fun write(workout: Workout) = dao.put(WorkoutRow(workout.id, json.encodeToString(workout)))
     suspend fun save(workout: Workout) = mutex.withLock { write(workout) }
     suspend fun edit(id: String, transform: (Workout) -> Workout) = mutex.withLock {
@@ -97,7 +107,7 @@ class WorkoutStore(context: Context, databaseName: String = "iron-index.db") {
             write(transform(before).stampStart(before).copy(updatedAt = System.currentTimeMillis()))
         }
     }
-    private suspend fun draft() = dao.all().map { json.decodeFromString<Workout>(it.payload) }.firstOrNull { !it.isTemplate && it.finishedAt == null }
+    private suspend fun draft() = dao.all().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Workout>(it) }.firstOrNull { !it.isTemplate && it.finishedAt == null }
     suspend fun activeDraft(): Workout? = mutex.withLock { draft() }
     /**
      * Opens the one unfinished workout, or creates it. Starting a routine/repeat replaces an empty draft;
@@ -115,7 +125,7 @@ class WorkoutStore(context: Context, databaseName: String = "iron-index.db") {
     }
     suspend fun saveExercise(exercise: Exercise) = dao.putExercise(ExerciseRow(exercise.id, json.encodeToString(exercise)))
     suspend fun saveEquipment(value: Equipment): Equipment = mutex.withLock {
-        val existing = dao.allEquipment().map { json.decodeFromString<Equipment>(it.payload) }
+        val existing = dao.allEquipment().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Equipment>(it) }
             .firstOrNull { it.identity == value.identity && it.id != value.id }
         val saved = existing?.copy(archived = false) ?: value
         dao.putEquipment(EquipmentRow(saved.id, json.encodeToString(saved)))

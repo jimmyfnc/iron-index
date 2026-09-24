@@ -70,6 +70,7 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
     val unit by vm.unit.collectAsStateWithLifecycle()
     val equipment by vm.equipment.collectAsStateWithLifecycle()
     val partners by vm.partners.collectAsStateWithLifecycle()
+    val history by vm.history.collectAsStateWithLifecycle()
     val pendingStart by vm.pendingStart.collectAsStateWithLifecycle()
     var manager by rememberSaveable { mutableStateOf<String?>(null) }
     var tab by rememberSaveable { mutableStateOf(0) }
@@ -106,7 +107,7 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             val profile = partners.find { it.id == profileId }
-            if (current != null) WorkoutScreen(current, exercises, equipment, partners, workouts, vm)
+            if (current != null) WorkoutScreen(current, exercises, equipment, partners, history, vm)
             else if (manager == "partners" || (profileId != null && profile == null)) PartnerManager(partners, workouts, vm::savePartner, { manager = "partner/$it" }) { manager = null }
             else if (profile != null) PartnerProfile(profile, workouts, unit, vm::savePartner,
                 openSession = { vm.openSession(it, profile.id) },
