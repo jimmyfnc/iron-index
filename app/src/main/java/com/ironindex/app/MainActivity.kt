@@ -99,7 +99,7 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
                 listOf("Train" to Icons.Rounded.FitnessCenter, "Routines" to Icons.Rounded.Dashboard,
                     "History" to Icons.Rounded.History, "Progress" to Icons.Rounded.Insights).forEachIndexed { index, (label, icon) ->
                     NavigationBarItem(selected = tab == index, onClick = { tab = index },
-                        icon = { Icon(icon, null) }, label = { Text(label) },
+                        icon = { Icon(icon, null) }, label = { FitText(label) },
                         colors = NavigationBarItemDefaults.colors(indicatorColor = Lime, selectedIconColor = Ink))
                 }
             }
@@ -134,9 +134,11 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
                     0 -> {
                         item {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = { manager = "partners" }, modifier = Modifier.weight(1f)) { Text("Partners") }
-                                OutlinedButton(onClick = { manager = "equipment" }, modifier = Modifier.weight(1f)) { Text("Equipment") }
-                                OutlinedButton(onClick = { manager = "backup" }, modifier = Modifier.weight(1f)) { Text("Backup") }
+                                // Three equal buttons: tight padding and one-line labels so "Equipment" never breaks mid-word.
+                                val tight = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+                                OutlinedButton(onClick = { manager = "partners" }, modifier = Modifier.weight(1f).heightIn(min = 48.dp), contentPadding = tight) { FitText("Partners") }
+                                OutlinedButton(onClick = { manager = "equipment" }, modifier = Modifier.weight(1f).heightIn(min = 48.dp), contentPadding = tight) { FitText("Equipment") }
+                                OutlinedButton(onClick = { manager = "backup" }, modifier = Modifier.weight(1f).heightIn(min = 48.dp), contentPadding = tight) { FitText("Backup") }
                             }
                         }
                         item {
@@ -188,7 +190,7 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
                         }
                         item {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("Your next session", fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                                Text("Your next session", fontSize = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                                 TextButton(onClick = { tab = 1 }) { Text("Routines") }
                             }
                         }
@@ -202,7 +204,7 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text("New freestyle workouts", color = Muted, modifier = Modifier.weight(1f))
                                 listOf("lb", "kg").forEach { value ->
-                                    FilterChip(selected = unit == value, onClick = { vm.setUnit(value) }, label = { Text(value) })
+                                    FilterChip(selected = unit == value, onClick = { vm.setUnit(value) }, label = { FitText(value) })
                                 }
                             }
                             Text("Routines keep their saved weight unit.", color = Muted, fontSize = 12.sp)
@@ -256,7 +258,7 @@ private fun PageHeading(title: String, subtitle: String) {
 private fun Stat(value: String, label: String, color: Color, modifier: Modifier) {
     Surface(modifier, color = color, shape = RoundedCornerShape(24.dp)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(value, color = Ink, fontSize = 32.sp, fontWeight = FontWeight.Black)
+            FitText(value, color = Ink, fontSize = 32.sp, fontWeight = FontWeight.Black)
             Text(label, color = Ink, fontSize = 12.sp)
         }
     }
@@ -291,7 +293,7 @@ private fun WorkoutCard(workout: Workout, action: String, start: () -> Unit, ope
 fun NameDialog(title: String, initial: String, dismiss: () -> Unit, label: String = "Workout name", save: (String) -> Unit) {
     var name by rememberSaveable { mutableStateOf(initial) }
     AlertDialog(onDismissRequest = dismiss, title = { Text(title) }, text = {
-        OutlinedTextField(name, { name = it }, label = { Text(label) }, singleLine = true)
+        OutlinedTextField(name, { name = it }, label = { FitText(label) }, singleLine = true)
     }, confirmButton = { TextButton(onClick = { save(name.trim()) }, enabled = name.isNotBlank()) { Text("Save") } },
         dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } })
 }

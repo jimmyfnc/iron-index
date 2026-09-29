@@ -73,7 +73,7 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
             }
             if (!readOnly && !workout.unitLocked) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Weight unit", color = Muted, fontSize = 13.sp)
-                listOf("lb", "kg").forEach { value -> FilterChip(workout.unit == value, { vm.edit(workout.id) { it.copy(unit = value) } }, label = { Text(value) },
+                listOf("lb", "kg").forEach { value -> FilterChip(workout.unit == value, { vm.edit(workout.id) { it.copy(unit = value) } }, label = { FitText(value) },
                     modifier = Modifier.semantics { contentDescription = "Use $value for this workout" }) }
             }
             if (workout.partners.isNotEmpty()) Text("Training with ${workout.partners.joinToString { it.name }}", color = Lavender)
@@ -84,8 +84,8 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
                 Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Logging", color = Muted, fontSize = 12.sp)
-                    FilterChip(athlete.isEmpty(), { athlete = "" }, label = { Text("You") }, modifier = Modifier.heightIn(min = 48.dp))
-                    tracked.forEach { p -> FilterChip(athlete == p.id, { athlete = p.id }, label = { Text(p.name) }, modifier = Modifier.heightIn(min = 48.dp)) }
+                    FilterChip(athlete.isEmpty(), { athlete = "" }, label = { FitText("You") }, modifier = Modifier.heightIn(min = 48.dp))
+                    tracked.forEach { p -> FilterChip(athlete == p.id, { athlete = p.id }, label = { FitText(p.name) }, modifier = Modifier.heightIn(min = 48.dp)) }
                 }
             }
         }
@@ -281,8 +281,9 @@ private fun SetupRowContent(current: Map<String, String>, last: Pair<Long, Map<S
                             save: (Map<String, String>, List<String>) -> Unit) {
     Row(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f).padding(vertical = 4.dp)) {
-            Text(if (current.isEmpty() && last != null) "Setup · last time ${dateLabel(last.first)}" else "Setup", color = Lavender, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Text(summary, color = if (current.isNotEmpty()) MaterialTheme.colorScheme.onSurface else Muted, fontSize = 14.sp)
+            // Wraps only between whole pieces ("last time" | "Sep 21, 2026", "Attachment Wide bar" | "Pulley height 12"), never inside one.
+            Text(if (current.isEmpty() && last != null) "Setup · last time ${dateLabel(last.first).keepTogether()}" else "Setup", color = Lavender, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(if (current.isEmpty() && last == null) summary else summary.split(" · ").joinToString(" · ") { if (it.length <= 20) it.keepTogether() else it }, color = if (current.isNotEmpty()) MaterialTheme.colorScheme.onSurface else Muted, fontSize = 14.sp)
         }
         if (editable && current.isEmpty() && last != null) TextButton(onClick = { save(last.second, emptyList()) },
             modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Use the same setup as last time for $who" }) { Text("Same") }
@@ -305,22 +306,22 @@ private fun SetupDialog(exerciseName: String, who: String, names: List<String>, 
         Column(Modifier.verticalScroll(rememberScrollState()).imePadding(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("For $who, saved with this workout. Leave a setting blank to skip it.", color = Muted, fontSize = 13.sp)
             fields.forEach { name ->
-                OutlinedTextField(values[name].orEmpty(), { values[name] = it }, label = { Text(name) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                OutlinedTextField(values[name].orEmpty(), { values[name] = it }, label = { FitText(name) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Next))
                 val chips = (used[name].orEmpty() + if (name.contains("attach", ignoreCase = true)) commonAttachments else emptyList())
                     .distinctBy { it.lowercase() }.filterNot { it.equals(values[name].orEmpty().trim(), ignoreCase = true) }.take(8)
                 if (chips.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    chips.forEach { value -> SuggestionChip(onClick = { values[name] = value }, label = { Text(value) },
+                    chips.forEach { value -> SuggestionChip(onClick = { values[name] = value }, label = { FitText(value) },
                         modifier = Modifier.semantics { contentDescription = "$name: $value" }) }
                 }
             }
             val offered = suggestions.filter { s -> fields.none { it.equals(s, ignoreCase = true) } }
             if (offered.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                offered.forEach { s -> AssistChip(onClick = { addField(s) }, label = { Text(s) }, leadingIcon = { Icon(Icons.Rounded.Add, null) },
+                offered.forEach { s -> AssistChip(onClick = { addField(s) }, label = { FitText(s) }, leadingIcon = { Icon(Icons.Rounded.Add, null) },
                     modifier = Modifier.semantics { contentDescription = "Add setting $s" }) }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(newName, { newName = it }, label = { Text("Add a setting") }, placeholder = { Text("Seat height, pin, handle") }, singleLine = true, modifier = Modifier.weight(1f),
+                OutlinedTextField(newName, { newName = it }, label = { FitText("Add a setting") }, placeholder = { FitText("Seat height, pin, handle") }, singleLine = true, modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                     keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { addField(newName); newName = "" }))
                 IconButton(onClick = { addField(newName); newName = "" }, enabled = newName.isNotBlank()) { Icon(Icons.Rounded.Add, "Add this setting") }
@@ -371,16 +372,14 @@ private fun SetRow(exerciseName: String, number: Int, set: SetEntry, unit: Strin
     val suffix = if (set.side == Side.BOTH) "" else " ${set.side.name.lowercase().replaceFirstChar { it.uppercase() }}"
     Column {
         if (suffix.isNotEmpty()) Text("Set $number ·$suffix", color = if (set.side == Side.LEFT) Lavender else Coral, fontWeight = FontWeight.Bold)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (set.side == Side.BOTH) Text("$number", color = if (set.counts) Lime else Muted, modifier = Modifier.width(20.dp))
-            OutlinedTextField(value = weight, onValueChange = { raw -> val value = raw.replace(',', '.'); weight = value; onChange { it.copy(weight = value) } },
-                label = { Text(if (plateOnly) "plates $unit" else unit) }, singleLine = true, readOnly = readOnly, isError = weight.isNotBlank() && weight.toWeightOrNull() == null,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.weight(1f).onFocusChanged { weightFocused = it.isFocused }.semantics { contentDescription = "$exerciseName set $number$suffix ${if (plateOnly) "plates" else "weight"} in $unit" })
-            OutlinedTextField(value = reps, onValueChange = { value -> reps = value; onChange { it.copy(reps = value) } },
-                label = { Text("reps") }, singleLine = true, readOnly = readOnly, isError = reps.isNotBlank() && reps.toIntOrNull()?.let { it in 1..9999 } != true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.weight(1f).onFocusChanged { repsFocused = it.isFocused }.semantics { contentDescription = "$exerciseName set $number$suffix reps" })
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (set.side == Side.BOTH) FitText("$number", color = if (set.counts) Lime else Muted, modifier = Modifier.width(18.dp))
+            SetField(weight, { raw -> val value = raw.replace(',', '.'); weight = value; onChange { it.copy(weight = value) } },
+                if (plateOnly) "plates $unit" else unit, readOnly, isError = weight.isNotBlank() && weight.toWeightOrNull() == null, KeyboardType.Decimal,
+                Modifier.weight(1f).onFocusChanged { weightFocused = it.isFocused }.semantics { contentDescription = "$exerciseName set $number$suffix ${if (plateOnly) "plates" else "weight"} in $unit" })
+            SetField(reps, { value -> reps = value; onChange { it.copy(reps = value) } },
+                "reps", readOnly, isError = reps.isNotBlank() && reps.toIntOrNull()?.let { it in 1..9999 } != true, KeyboardType.Number,
+                Modifier.weight(1f).onFocusChanged { repsFocused = it.isFocused }.semantics { contentDescription = "$exerciseName set $number$suffix reps" })
             if (!template) Checkbox(checked = set.complete, enabled = !readOnly && (set.complete || set.valid()),
                 onCheckedChange = { checked -> onChange { it.copy(complete = checked && it.valid()) } }, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = "Complete set $number$suffix" })
             if (!readOnly) IconButton(onClick = { deleting = true }) { Icon(Icons.Rounded.Close, "Delete set $number$suffix", tint = Muted) }
@@ -390,6 +389,28 @@ private fun SetRow(exerciseName: String, number: Int, set: SetEntry, unit: Strin
         if ((weight.isNotBlank() && weight.toWeightOrNull() == null) || (reps.isNotBlank() && reps.toIntOrNull()?.let { it in 1..9999 } != true)) Text("Use weight 0–99,999 and whole reps 1–9,999.", color = Coral, fontSize = 12.sp)
     }
     if (deleting) ConfirmDialog("Remove set $number$suffix?", "Only this entry is removed. Other sides and people stay saved.", "Remove", { deleting = false }) { onDelete(); deleting = false }
+}
+
+/**
+ * An outlined weight/reps field with slimmer inside padding than OutlinedTextField (10dp instead of 16dp a side),
+ * so the value and its label fit beside the checkbox and delete button on narrow phones and with large text.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SetField(value: String, onValueChange: (String) -> Unit, label: String, readOnly: Boolean, isError: Boolean, keyboardType: KeyboardType, modifier: Modifier) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val colors = OutlinedTextFieldDefaults.colors()
+    val padding = OutlinedTextFieldDefaults.contentPadding(start = 10.dp, end = 10.dp)
+    // Same top offset (8sp, so it grows with text size) and merged semantics as OutlinedTextField, so the floating label sits on the border.
+    val top = with(androidx.compose.ui.platform.LocalDensity.current) { 8.sp.toDp() }
+    androidx.compose.foundation.text.BasicTextField(value, onValueChange, readOnly = readOnly, singleLine = true, interactionSource = interaction,
+        textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface), cursorBrush = androidx.compose.ui.graphics.SolidColor(if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        modifier = modifier.semantics(mergeDescendants = true) {}.padding(top = top).defaultMinSize(minHeight = OutlinedTextFieldDefaults.MinHeight)) { inner ->
+        OutlinedTextFieldDefaults.DecorationBox(value, inner, enabled = true, singleLine = true, visualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
+            interactionSource = interaction, isError = isError, label = { FitText(label) }, colors = colors, contentPadding = padding,
+            container = { OutlinedTextFieldDefaults.Container(enabled = true, isError = isError, interactionSource = interaction, colors = colors, shape = RoundedCornerShape(12.dp)) })
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -402,14 +423,14 @@ private fun ExercisePicker(library: List<Exercise>, equipment: List<Equipment>, 
     ModalBottomSheet(onDismissRequest = dismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Ink) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).imePadding()) {
             Text("Find your next move", fontSize = 26.sp, fontWeight = FontWeight.Bold)
-            OutlinedTextField(query, { query = it }, label = { Text("Search exercises or muscles") }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp), singleLine = true)
+            OutlinedTextField(query, { query = it }, label = { FitText("Search exercises") }, placeholder = { FitText("Name or muscle") }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp), singleLine = true)
             TextButton(onClick = { custom = true }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Rounded.Add, null); Text("Create custom exercise") }
             Text("Choose an exercise, then the equipment you’re using today.", color = Muted, fontSize = 12.sp)
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 (listOf("") + muscleFilters(library)).forEach { muscle ->
                     val tint = if (muscle.isEmpty()) Lime else muscleColor(muscle)
                     FilterChip(selected = muscleFilter.equals(muscle, true), onClick = { muscleFilter = muscle },
-                        label = { Text(muscle.ifEmpty { "All muscles" }) },
+                        label = { FitText(muscle.ifEmpty { "All muscles" }) },
                         modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Filter muscles: ${muscle.ifEmpty { "All" }}" },
                         colors = FilterChipDefaults.filterChipColors(labelColor = tint, selectedContainerColor = tint, selectedLabelColor = Ink))
                 }

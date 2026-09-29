@@ -62,7 +62,7 @@ fun AnalyticsScreen(workouts: List<Workout>, partners: List<Partner>, unit: Stri
         if (logs.isEmpty()) item { Text("Finish a workout with this person’s sets to see their history, charts and records here.", color = Lavender) }
         else {
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Period.entries.forEach { p -> FilterChip(period == p, { periodName = p.name }, label = { Text(p.label) }) } }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Period.entries.forEach { p -> FilterChip(period == p, { periodName = p.name }, label = { FitText(p.label) }) } }
                 Text("This ${if (period == Period.WEEK) "week" else "month"} · ${count(recent.map { it.workout.id }.distinct().size, "session")} · ${count(recent.size, "logged set")}", fontWeight = FontWeight.Bold)
                 Text("${numberLabel(displayWeight(recent.sumOf { it.volumeKg }, unit))} $unit × reps", color = Lime, fontSize = 24.sp)
             }
@@ -81,7 +81,7 @@ fun AnalyticsScreen(workouts: List<Workout>, partners: List<Partner>, unit: Stri
             item {
                 SectionTitle("Exercise progression")
                 ChoiceField("Exercise · equipment · side", selected?.let { keyId(it.first) }.orEmpty(), variants.map { keyId(it.first) to it.second }) { exerciseChoice = it }
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { Metric.entries.forEach { m -> FilterChip(metric == m, { metricName = m.name }, label = { Text(m.label) }) } }
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { Metric.entries.forEach { m -> FilterChip(metric == m, { metricName = m.name }, label = { FitText(m.label) }) } }
             }
             item {
                 val suffix = when (metric) { Metric.REPS -> "reps"; Metric.VOLUME -> "$unit × reps"; Metric.PERFORMANCE -> "% of baseline"; else -> unit }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.1 - 2026-09-29
+
+- **Words no longer break in half on smaller phones or with bigger text.** The home screen's Partners / Equipment / Backup buttons, the lb / reps boxes on each set, text-box labels and stat numbers stay on one line and shrink slightly to fit instead of wrapping ("Equipme / nt").
+- The weight and reps boxes are a little slimmer inside, so the number has room beside the checkbox.
+- Setup lines wrap only between whole pieces, so a date never splits across lines.
+- In exercise details, Edit moves under Choose equipment on narrow screens instead of being cut off at the edge.
+- Picking a machine no longer pops the keyboard up over the form.
+
 ## 0.8.0 - 2026-09-28
 
 - **Machine setup, remembered.** Give a machine its settings, such as **Seat height** on a chest press or **Attachment** and **Pulley height** on a cable stack (suggested from the machine type), in Train → Equipment, or add one straight from a workout.

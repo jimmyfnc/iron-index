@@ -1,5 +1,14 @@
 # IronIndex verification
 
+## 0.8.1 - 2026-09-29
+
+- assembleDebug, all 70 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 33 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned (the owner's phone was attached and untouched by tests).
+- New connected tests (SmallScreenTest) render the app at 360dp with 1.3× text and at 340dp with normal text, and check that the home buttons, the plates lb / lb / reps labels and a two-digit set number stay on one line without clipping. A deliberate check with the old plain "Equipment" label failed it (2 lines), so the test catches the original bug. A first attempt at 320dp showed the set row can't fit there at all; 340–360dp is the supported floor.
+- Audit on the emulator at 360dp and 1.3× text across Home, Routines, History, Progress, Partners, partner profile, Equipment, Backup, the workout and its dialogs. Before: "Partn/ers", "Equip/ment", "Back/up", "rep/s", "plate/s lb", "1,080./0", clipped Edit button and a split setup date. After: all on one line or wrapping between whole pieces.
+- Keyboard: after choosing a machine through the picker's search, the keyboard stays closed (mInputShown=false); tapping the exercise name right after opening details still opens it.
+- The owner reported the phone's "Equipment" button wrapping (384dp, normal text) and the picker popping the keyboard (a swipe then typed into the exercise name, cancelled without saving while fixing their data).
+- A code review found the first focus fix running in the wrong window, long "Add …" setup prompts made unbreakable, two-digit set numbers, the field offset not scaling with text size, red value text unlike stock fields, and "Routines" squeezed beside "Your next session". All fixed before release.
+
 ## 0.8.0 - 2026-09-28
 
 - assembleDebug, all 70 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 31 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned (no phone attached). The first full run had one failure: an older partner test scrolled back to the title to reach the You chip, which failed once the taller card pushed it away; the chips are pinned since 0.6.1, so the step now taps them directly.

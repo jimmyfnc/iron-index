@@ -1,7 +1,7 @@
 # IronIndex
 
 A colorful, standalone Android workout tracker. Built with Kotlin, Jetpack Compose
-and Room. Works offline with no account required. Current version: **0.8.0**.
+and Room. Works offline with no account required. Current version: **0.8.1**.
 
 ## Included
 
@@ -88,6 +88,9 @@ Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
 [Reordering](docs/screenshots/0.2.0/reorder.png) ·
 [Progress](docs/screenshots/0.2.0/progress.png). These previews use synthetic test data.
 
+0.8.1: [Small screen, before](docs/screenshots/0.8.1/before-small-text.png) ·
+[after](docs/screenshots/0.8.1/after-small-text.png) (360dp, large text).
+
 0.8.0: [Last time's setup](docs/screenshots/0.8.0/last-time-setup.png) ·
 [Setup form](docs/screenshots/0.8.0/setup-form.png) · [Machine settings](docs/screenshots/0.8.0/machine-settings.png).
 
@@ -120,6 +123,7 @@ See
 - `Backup.kt`: backup file format, validation and the import merge rules.
 - `Load.kt`: starting weights, totals, plate math and re-basing typed weights.
 - `Setup.kt`: machine setup settings, per-person values and "last time" lookups.
+- `FitText.kt`: one-line labels that shrink to fit instead of wrapping on small screens or large text.
 - `app/schemas`: Room schema history; commit schema changes with migrations.
 - `.githooks/`, `scripts/install-hooks.sh`: release hygiene and doc-drift checks.
 - `docs/ROADMAP.md`, `docs/brainstorms/`, `docs/archive/`: backlog, live and shipped designs.

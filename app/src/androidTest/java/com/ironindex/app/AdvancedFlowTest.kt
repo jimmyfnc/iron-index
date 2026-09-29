@@ -243,7 +243,7 @@ class AdvancedFlowTest {
         compose.onNodeWithText("Equipment type *").performTextInput("Chest press")
         compose.onNodeWithText("Brand").performTextInput("Life Fitness")
         compose.onNodeWithText("Model").performScrollTo().performTextInput("Insignia")
-        compose.onNodeWithText("Gym / nickname (optional)").performScrollTo().performTextInput("Downtown")
+        compose.onNodeWithText("Gym or nickname").performScrollTo().performTextInput("Downtown")
         compose.onNodeWithText("Save equipment").performClick()
         compose.waitUntil(10000) { runBlocking { store.equipment.first().any { it.brand == "Life Fitness" && it.model == "Insignia" && it.location == "Downtown" } } }
         compose.onNodeWithContentDescription("Back").performClick()
@@ -298,8 +298,9 @@ class AdvancedFlowTest {
         runBlocking { store.saveEquipment(cable); store.savePartner(alex); store.save(past); store.save(workout) }
         fun today() = runBlocking { store.workouts.first().single { it.id == workout.id }.exercises.single() }
         launch(workout)
-        awaitText("Setup · last time ${dateLabel(1_000)}")
-        compose.onNodeWithText("Attachment Rope").assertExists()
+        // Setup pieces use non-breaking spaces so they wrap whole.
+        awaitText("Setup · last time ${dateLabel(1_000).keepTogether()}")
+        compose.onNodeWithText("Attachment Rope".keepTogether()).assertExists()
         compose.onNodeWithContentDescription("Use the same setup as last time for you").performClick()
         compose.waitUntil(10000) { today().setupFor(null) == mapOf("Attachment" to "Rope") }
         compose.onNodeWithContentDescription("Setup for Triceps pushdown, you: Attachment Rope").performClick()
@@ -310,7 +311,7 @@ class AdvancedFlowTest {
         compose.onNodeWithText("Save setup").performClick()
         compose.waitUntil(10000) { today().setupFor(null) == mapOf("Attachment" to "V-bar", "Pulley height" to "12") }
         compose.waitUntil(10000) { runBlocking { store.equipment.first().single { it.id == cable.id }.settings } == listOf("Attachment", "Pulley height") }
-        awaitText("Attachment V-bar · Pulley height 12")
+        awaitText("${"Attachment V-bar".keepTogether()} · ${"Pulley height 12".keepTogether()}")
         compose.onNodeWithText("Alex").performClick()
         awaitText("Add attachment, pulley height")
         assertTrue(today().setupFor(alex.id).isEmpty())

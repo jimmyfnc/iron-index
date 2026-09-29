@@ -54,7 +54,7 @@ fun PartnerManager(partners: List<Partner>, workouts: List<Workout>, save: (Part
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { ManagerHeading("Partner Manager", "Local profiles. Each person keeps their own sets and history.", back) }
         item { Button(onClick = { editingId = "" }, modifier = Modifier.fillMaxWidth()) { Text("Add partner") } }
-        item { FilterChip(showArchived, { showArchived = !showArchived }, label = { Text("Show archived") }) }
+        item { FilterChip(showArchived, { showArchived = !showArchived }, label = { FitText("Show archived") }) }
         if (partners.isEmpty()) item { Text("Add someone you train with. Attach them from inside a workout.") }
         items(partners.filter { showArchived || !it.archived }, key = { it.id }) { p ->
             val summary = remember(workouts, p.id) { personSummary(completedHistory(workouts, p.id)) }
@@ -85,9 +85,9 @@ fun PartnerEditor(initial: Partner, dismiss: () -> Unit, save: (Partner) -> Unit
     var notes by rememberSaveable(initial.id) { mutableStateOf(initial.notes) }
     AlertDialog(onDismissRequest = dismiss, title = { Text(if (initial.name.isBlank()) "Add partner" else "Edit partner") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()).imePadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(name, { name = it }, label = { Text("Partner name *") }, singleLine = true)
-            OutlinedTextField(goal, { goal = it }, label = { Text("Goal / focus") }, placeholder = { Text("Bench 225, hypertrophy, rehab…") }, singleLine = true)
-            OutlinedTextField(notes, { notes = it }, label = { Text("Notes") }, placeholder = { Text("Injuries, limits, cues, preferred machines") }, minLines = 3)
+            OutlinedTextField(name, { name = it }, label = { FitText("Partner name *") }, singleLine = true)
+            OutlinedTextField(goal, { goal = it }, label = { FitText("Goal / focus") }, placeholder = { FitText("Bench 225, hypertrophy, rehab…") }, singleLine = true)
+            OutlinedTextField(notes, { notes = it }, label = { FitText("Notes") }, placeholder = { FitText("Injuries, limits, cues, preferred machines") }, minLines = 3)
             Text("Goal and notes show above the sets while you log for this person.", style = MaterialTheme.typography.bodySmall, color = Muted)
         }
     }, confirmButton = { TextButton(onClick = { save(initial.copy(name = name.trim(), goal = goal.trim(), notes = notes.trim())) }, enabled = name.isNotBlank()) { Text("Save") } },
@@ -146,8 +146,8 @@ fun PartnerProfile(partner: Partner, workouts: List<Workout>, unit: String, save
 private fun ProfileStat(value: String, label: String, modifier: Modifier) {
     Surface(modifier, color = Panel, shape = MaterialTheme.shapes.large) {
         Column(Modifier.padding(12.dp)) {
-            Text(value, color = Lime, fontSize = 20.sp, fontWeight = FontWeight.Black)
-            Text(label, color = Muted, fontSize = 12.sp)
+            FitText(value, color = Lime, fontSize = 20.sp, fontWeight = FontWeight.Black)
+            FitText(label, color = Muted, fontSize = 12.sp)
         }
     }
 }
@@ -160,7 +160,7 @@ fun EquipmentManager(equipment: List<Equipment>, workouts: List<Workout>, save: 
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { ManagerHeading("Equipment library", "Brand + model + optional gym or nickname. Your workout history remembers the equipment you used.", back) }
         item { Button(onClick = { adding = true }, modifier = Modifier.fillMaxWidth()) { Text("Add equipment") } }
-        item { FilterChip(showArchived, { showArchived = !showArchived }, label = { Text("Show archived") }) }
+        item { FilterChip(showArchived, { showArchived = !showArchived }, label = { FitText("Show archived") }) }
         items(equipment.filter { showArchived || !it.archived }, key = { it.id }) { e ->
             Card {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -240,23 +240,23 @@ fun EquipmentEditor(initial: Equipment?, dismiss: () -> Unit, validate: (Equipme
     val problem = validate(result)
     AlertDialog(onDismissRequest = dismiss, title = { Text(if (initial == null) "Add equipment" else "Edit equipment") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()).imePadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(type, { type = it }, label = { Text("Equipment type *") }, placeholder = { Text("Incline press machine") })
-            OutlinedTextField(brand, { brand = it }, label = { Text("Brand") }, placeholder = { Text("Hammer Strength") })
-            OutlinedTextField(model, { model = it }, label = { Text("Model") }, placeholder = { Text("ISO-Lateral Incline Press") })
-            OutlinedTextField(location, { location = it }, label = { Text("Gym / nickname (optional)") })
+            OutlinedTextField(type, { type = it }, label = { FitText("Equipment type *") }, placeholder = { FitText("Incline press machine") })
+            OutlinedTextField(brand, { brand = it }, label = { FitText("Brand") }, placeholder = { FitText("Hammer Strength") })
+            OutlinedTextField(model, { model = it }, label = { FitText("Model") }, placeholder = { FitText("ISO-Lateral Incline Press") })
+            OutlinedTextField(location, { location = it }, label = { FitText("Gym or nickname") }, placeholder = { FitText("Optional · Downtown, garage") })
             problem?.let { Text(it, color = Coral, style = MaterialTheme.typography.bodySmall) }
             if (initial != null) Text("Name changes show everywhere this machine is used, past sessions included.", style = MaterialTheme.typography.bodySmall, color = Muted)
             Text("Starting weight", fontWeight = FontWeight.Bold)
             Text("The bar, sled or carriage before plates. Leave blank for dumbbells and cables.", style = MaterialTheme.typography.bodySmall, color = Muted)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(45.0 to "lb", 55.0 to "lb", 35.0 to "lb", 25.0 to "lb", 20.0 to "kg", 15.0 to "kg").forEach { (w, u) ->
-                    FilterChip(baseValue == w && baseUnit == u, { base = weightText(w); baseUnit = u }, label = { Text("${weightText(w)} $u") })
+                    FilterChip(baseValue == w && baseUnit == u, { base = weightText(w); baseUnit = u }, label = { FitText("${weightText(w)} $u") })
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(base, { base = it.replace(',', '.') }, label = { Text("Starting weight") }, singleLine = true, modifier = Modifier.weight(1f),
+                OutlinedTextField(base, { base = it.replace(',', '.') }, label = { FitText("Starting weight") }, singleLine = true, modifier = Modifier.weight(1f),
                     isError = base.isNotBlank() && base.toWeightOrNull() == null, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-                listOf("lb", "kg").forEach { u -> FilterChip(baseUnit == u, { baseUnit = u }, label = { Text(u) }, modifier = Modifier.semantics { contentDescription = "Starting weight in $u" }) }
+                listOf("lb", "kg").forEach { u -> FilterChip(baseUnit == u, { baseUnit = u }, label = { FitText(u) }, modifier = Modifier.semantics { contentDescription = "Starting weight in $u" }) }
             }
             if (baseValue != null) Column(Modifier.selectableGroup()) {
                 Text("How do you log it?", fontWeight = FontWeight.Bold)
@@ -271,17 +271,17 @@ fun EquipmentEditor(initial: Equipment?, dismiss: () -> Unit, validate: (Equipme
             Text("What you set each time, such as seat height or the cable attachment. Each person's values show on the exercise while they log.", style = MaterialTheme.typography.bodySmall, color = Muted)
             if (settings.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 settings.forEach { name ->
-                    InputChip(selected = true, onClick = { settingsText = settings.filterNot { it == name }.joinToString("\n") }, label = { Text(name) },
+                    InputChip(selected = true, onClick = { settingsText = settings.filterNot { it == name }.joinToString("\n") }, label = { FitText(name) },
                         trailingIcon = { Icon(Icons.Rounded.Close, null, Modifier.size(16.dp)) }, modifier = Modifier.semantics { contentDescription = "Remove setting $name" })
                 }
             }
             val offered = suggestedSettings(type).filter { s -> settings.none { it.equals(s, ignoreCase = true) } }
             if (offered.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                offered.forEach { s -> AssistChip(onClick = { addSetting(s) }, label = { Text(s) }, leadingIcon = { Icon(Icons.Rounded.Add, null) },
+                offered.forEach { s -> AssistChip(onClick = { addSetting(s) }, label = { FitText(s) }, leadingIcon = { Icon(Icons.Rounded.Add, null) },
                     modifier = Modifier.semantics { contentDescription = "Add setting $s" }) }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(newSetting, { newSetting = it }, label = { Text("Add a setting") }, placeholder = { Text("Seat height, pin, handle") }, singleLine = true, modifier = Modifier.weight(1f),
+                OutlinedTextField(newSetting, { newSetting = it }, label = { FitText("Add a setting") }, placeholder = { FitText("Seat height, pin, handle") }, singleLine = true, modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                     keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { addSetting(newSetting); newSetting = "" }))
                 IconButton(onClick = { addSetting(newSetting); newSetting = "" }, enabled = newSetting.isNotBlank()) { Icon(Icons.Rounded.Add, "Add this setting") }
@@ -298,7 +298,7 @@ fun EquipmentPicker(equipment: List<Equipment>, dismiss: () -> Unit, exerciseNam
     AlertDialog(onDismissRequest = dismiss, title = { Text(exerciseName?.let { "Equipment for $it" } ?: "Choose equipment") }, text = {
         Column {
             if (exerciseName != null) Text("One exercise, any equipment. Each equipment choice keeps its own history.")
-            OutlinedTextField(query, { query = it }, label = { Text("Search type, brand, model or gym") })
+            OutlinedTextField(query, { query = it }, label = { FitText("Search equipment") }, placeholder = { FitText("Type, brand, model or gym") })
             TextButton(onClick = { adding = true }) { Text("Add new equipment") }
             LazyColumn(Modifier.heightIn(max = 320.dp)) {
                 item { TextButton(onClick = { pick(null) }) { Text("Unspecified equipment") } }
@@ -344,6 +344,7 @@ fun WorkoutPartnersDialog(workout: Workout, partners: List<Partner>, vm: IronInd
     if (newPartner) NameDialog("Create partner", "", { newPartner = false }, label = "Partner name") { vm.savePartner(Partner(name = it)); newPartner = false }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: List<Equipment>, title: String,
                    modeLocked: Boolean = false,
@@ -364,9 +365,21 @@ fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: Lis
     val equipment = chosen?.let { c -> catalog.find { it.id == c.id } ?: c }
     var picking by rememberSaveable { mutableStateOf(false) }
     var editingEquipment by rememberSaveable { mutableStateOf(false) }
+    // True while the picker or machine editor is open, so their closing can be told apart from the first open.
+    var away by rememberSaveable { mutableStateOf(false) }
     AlertDialog(onDismissRequest = dismiss, title = { Text(title) }, text = {
+        // Closing the picker or machine editor hands focus back to this dialog's first field, popping the keyboard
+        // over the form (a swipe on it then types into the exercise name). Clear it, in this dialog's own window,
+        // only right after one of them closes, never on first open or while typing.
+        val dialogFocus = androidx.compose.ui.platform.LocalFocusManager.current
+        val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+        LaunchedEffect(picking, editingEquipment) {
+            val open = picking || editingEquipment
+            if (away && !open) { kotlinx.coroutines.delay(150); dialogFocus.clearFocus(); keyboard?.hide() }
+            away = open
+        }
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(name, { name = it }, label = { Text("Exercise name *") })
+            OutlinedTextField(name, { name = it }, label = { FitText("Exercise name *") })
             val renaming = askOnRename && initial.renamedTo(name)
             if (renaming) Column(Modifier.selectableGroup()) {
                 Text("Is this the same movement?", fontWeight = FontWeight.Bold)
@@ -381,7 +394,8 @@ fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: Lis
             Text(equipment?.label ?: "Unspecified equipment")
             // This session's own load settings for its machine; the catalog's for a newly picked one.
             (if (equipment?.id == initialEquipment?.id) initialEquipment else equipment)?.baseLabel?.let { Text(it.replaceFirstChar { c -> c.uppercase() }, color = Lime, fontSize = 13.sp) }
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Wraps to a second line on narrow screens instead of cutting Edit off at the edge.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 OutlinedButton(onClick = { picking = true }) { Text("Choose equipment") }
                 // Only machines already in the catalog; a brand-new one is saved with the exercise.
                 if (editEquipment != null && equipment != null && catalog.any { it.id == equipment.id }) OutlinedButton(onClick = { editingEquipment = true },
@@ -392,10 +406,10 @@ fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: Lis
                 style = MaterialTheme.typography.bodySmall, color = Muted)
             if (!modeLocked) ChoiceField("How is this performed?", mode, ExerciseMode.entries.map { it.name to it.displayName() }) { mode = it }
             else Text("${initial.mode.displayName()} · add a new entry to change sides after entering values.")
-            OutlinedTextField(primary, { primary = it }, label = { Text("Primary muscles (comma separated)") }, placeholder = { Text("Chest, upper chest") })
-            OutlinedTextField(secondary, { secondary = it }, label = { Text("Secondary muscles (comma separated)") }, placeholder = { Text("Triceps, front delts") })
+            OutlinedTextField(primary, { primary = it }, label = { FitText("Primary muscles") }, placeholder = { FitText("Comma separated: chest, upper chest") })
+            OutlinedTextField(secondary, { secondary = it }, label = { FitText("Secondary muscles") }, placeholder = { FitText("Comma separated: triceps, front delts") })
             Text("Examples: ${muscleSuggestions.take(12).joinToString(", ")}", style = MaterialTheme.typography.bodySmall)
-            OutlinedTextField(target, { target = it }, label = { Text("Specific target / isolation notes") }, placeholder = { Text("e.g. Upper chest emphasis") })
+            OutlinedTextField(target, { target = it }, label = { FitText("Target notes") }, placeholder = { FitText("e.g. Upper chest emphasis") })
         }
     }, confirmButton = { TextButton(enabled = name.isNotBlank() && (!askOnRename || !initial.renamedTo(name) || identity.isNotEmpty()), onClick = {
         fun muscles(text: String) = text.split(',').map { it.trim() }.filter { it.isNotBlank() }.distinctBy { it.lowercase() }

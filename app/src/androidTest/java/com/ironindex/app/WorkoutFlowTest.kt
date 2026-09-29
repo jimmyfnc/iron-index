@@ -52,10 +52,10 @@ class WorkoutFlowTest {
         compose.onNode(hasText("Triceps pushdown") and hasClickAction()).assertExists()
         compose.onNode(hasText("Biceps curl") and hasClickAction()).assertDoesNotExist()
         compose.onNodeWithContentDescription("Filter muscles: All").performScrollTo().performClick()
-        compose.onNodeWithText("Search exercises or muscles").performTextInput("arms")
+        compose.onNodeWithText("Search exercises").performTextInput("arms")
         compose.onNode(hasText("Biceps curl") and hasClickAction()).assertExists()
         compose.onNode(hasText("Triceps pushdown") and hasClickAction()).assertExists()
-        compose.onNodeWithText("Search exercises or muscles").performTextReplacement("no such target")
+        compose.onNodeWithText("Search exercises").performTextReplacement("no such target")
         compose.onNodeWithText("No matches. Try All muscles or clear your search.").assertExists()
     }
 
@@ -67,12 +67,12 @@ class WorkoutFlowTest {
             else compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Add exercise"))
                 .also { compose.onNodeWithText("Add exercise").performClick() }
             awaitText("Find your next move")
-            compose.onNodeWithText("Search exercises or muscles").performTextInput("Biceps")
+            compose.onNodeWithText("Search exercises").performTextInput("Biceps")
             androidx.test.espresso.Espresso.closeSoftKeyboard() // the IME animating closed can swallow the tap
             compose.waitForIdle()
             compose.onNode(hasText("Biceps curl") and hasClickAction()).performClick()
             awaitText("Equipment for Biceps curl")
-            compose.onNodeWithText("Search type, brand, model or gym").performTextInput(equipment)
+            compose.onNodeWithText("Search equipment").performTextInput(equipment)
             compose.onNode(hasText(equipment) and !hasSetTextAction()).performClick()
             compose.waitUntil(10000) { runBlocking { store.workouts.first().single().exercises.size == index + 1 } }
         }
@@ -92,7 +92,7 @@ class WorkoutFlowTest {
         awaitText("Add first exercise")
         compose.onNodeWithText("Add first exercise").performClick()
         awaitText("Find your next move")
-        compose.onNodeWithText("Search exercises or muscles").performTextInput("Bench")
+        compose.onNodeWithText("Search exercises").performTextInput("Bench")
         // The IME animating closed can swallow the first tap; dismiss it and wait for the result row.
         androidx.test.espresso.Espresso.closeSoftKeyboard()
         compose.waitForIdle()
