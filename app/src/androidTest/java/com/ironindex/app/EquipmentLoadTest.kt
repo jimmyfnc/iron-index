@@ -60,7 +60,7 @@ class EquipmentLoadTest {
     @Test fun exerciseDetailsNeverRewriteTheCatalogFromASnapshot() {
         runBlocking { store.saveEquipment(plain); store.save(Workout(id = "draft", name = "Now", exercises = listOf(entry(plain, "", false)))) }
         runBlocking { store.applyEquipment(sled, false) }
-        val vm = IronIndexViewModel(app, store)
+        val vm = IronIndexViewModel(app, store, null)
         val snapshot = runBlocking { store.workouts.first().single { it.id == "draft" } }
         // Wait for the ViewModel's workouts to load, then save details with the (old) equipment choice.
         val deadline = System.currentTimeMillis() + 10_000
@@ -83,7 +83,7 @@ class EquipmentLoadTest {
     @Test fun switchingToTheRightMachineAfterLoggingKeepsWeightsAsTyped() {
         val other = Equipment(id = "lf", type = "Leg press", brand = "Life Fitness", baseWeight = 100.0, loadMode = LoadMode.ADDED)
         runBlocking { store.saveEquipment(plain); store.saveEquipment(other); store.save(Workout(id = "draft", name = "Now", exercises = listOf(entry(plain, "180", true)))) }
-        val vm = IronIndexViewModel(app, store)
+        val vm = IronIndexViewModel(app, store, null)
         runBlocking { vm.workouts.first { it.isNotEmpty() } }
         val current = runBlocking { store.workouts.first().single() }.exercises.single()
         vm.editDetails("draft", current.id, current.exercise, other)
@@ -109,7 +109,7 @@ class EquipmentLoadTest {
 
     @Test fun discardingASessionEditKeepsMachineEditsMadeDuringIt() {
         runBlocking { store.saveEquipment(plain); store.save(past) }
-        val vm = IronIndexViewModel(app, store)
+        val vm = IronIndexViewModel(app, store, null)
         vm.beginEdit(past)
         vm.updateEquipment(plain.copy(model = "Linear"), reinterpretPast = false)
         val deadline = System.currentTimeMillis() + 10_000

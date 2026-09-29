@@ -1,6 +1,6 @@
 # Accounts, cloud sync and the Discipline link — brainstorm
 
-**Status:** idea, nothing built (2026-09-29). Supersedes the "Discipline sync / optional account"
+**Status:** Health Connect writing shipped in 0.9.0 (step 4 below). Sign-in and cloud sync: idea, nothing built. Supersedes the "Discipline sync / optional account"
 line in [PRODUCT.md](../PRODUCT.md#future-discipline-integration); its sync prerequisites still apply.
 
 ## What the owner wants

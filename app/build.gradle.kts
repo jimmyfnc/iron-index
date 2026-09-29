@@ -11,8 +11,8 @@ android {
         applicationId = "com.ironindex.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 16
-        versionName = "0.8.1"
+        versionCode = 17
+        versionName = "0.9.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions {
@@ -36,6 +36,8 @@ dependencies {
     implementation("androidx.room:room-ktx:2.7.1")
     ksp("androidx.room:room-compiler:2.7.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+    // Health Connect: share finished sessions (write-only) with Discipline and other health apps.
+    implementation("androidx.health.connect:connect-client:1.1.0")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test:runner:1.7.0")

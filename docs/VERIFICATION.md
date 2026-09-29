@@ -1,5 +1,13 @@
 # IronIndex verification
 
+## 0.9.0 - 2026-09-29
+
+- assembleDebug, all 75 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 33 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned (the owner's phone was not attached).
+- Unit coverage (HealthSessionTest): only finished sessions with your own checked sets are shared (not routines, drafts, partner-only or unchecked); partners' sets don't count in the note; a zero-length session lasts a minute; the sync plan writes only new or changed sessions (by version), removes deleted or emptied ones and leaves unchanged ones alone.
+- Manual emulator run (Android 16, Health Connect built in): the Backup card's switch opened Health Connect's permission screen asking only to write Exercise; after allowing, "Last week" appeared in Health Connect as "Strength training · Last week, 11:14 PM–12:14 AM · IronIndex" with "2 exercises · 2 sets · logged in IronIndex". Finishing a draft added "Pair day" (1 set: only yours, not the partner's). Deleting "Last week" removed it ("No data" for that day). Health Connect's "privacy policy" link opens the in-app explanation. The card then showed "Shared · 1 session · 10:39 AM".
+- Instrumented tests build the ViewModel without Health Connect, so test runs can never write fake sessions into a real Health Connect.
+- A code review found test runs able to write to Health Connect, every session re-sent on each change with no memory of what was shared (and deletions made while sharing was off never removed), silent failures, a stale permission state after visiting Health Connect's settings, no way back after a refusal, "update required" shown as "unavailable", and restore-to-new-phone wording. All fixed before release; the shared-sessions record is excluded from backups so a restored phone shares afresh.
+
 ## 0.8.1 - 2026-09-29
 
 - assembleDebug, all 70 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 33 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned (the owner's phone was attached and untouched by tests).

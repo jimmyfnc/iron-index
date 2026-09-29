@@ -33,7 +33,7 @@ class EditSessionTest {
 
     private fun open() {
         runBlocking { store.save(session) }
-        vm = IronIndexViewModel(app, store)
+        vm = IronIndexViewModel(app, store, null)
         compose.setContent { MaterialTheme(colorScheme = IronIndexColors) { IronIndexApp(vm) } }
         compose.runOnIdle { vm.opened.value = session.id }
         awaitText("SESSION COMPLETE")

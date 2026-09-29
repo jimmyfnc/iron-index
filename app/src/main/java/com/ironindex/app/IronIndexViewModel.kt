@@ -11,7 +11,13 @@ import kotlinx.coroutines.withContext
 /** Pounds only where they're the everyday unit; everyone else starts in kilograms. */
 fun defaultUnit(country: String = java.util.Locale.getDefault().country) = if (country in setOf("US", "LR", "MM")) "lb" else "kg"
 
-class IronIndexViewModel @JvmOverloads constructor(application: Application, private val store: WorkoutStore = WorkoutStore(application)) : AndroidViewModel(application) {
+@OptIn(kotlinx.coroutines.FlowPreview::class)
+class IronIndexViewModel @JvmOverloads constructor(
+    application: Application,
+    private val store: WorkoutStore = WorkoutStore(application),
+    /** Null in tests, so a test run can never write fake sessions into a real Health Connect. */
+    private val health: HealthSync? = HealthSync(application),
+) : AndroidViewModel(application) {
     val workouts = store.workouts.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     /** Finished sessions only; emits only when history changes, not on every keystroke in a draft. */
     val history = workouts.map { all -> all.filter { !it.isTemplate && it.finishedAt != null } }.distinctUntilChanged()
@@ -23,6 +29,40 @@ class IronIndexViewModel @JvmOverloads constructor(application: Application, pri
     val unit = MutableStateFlow(preferences.getString("unit", null) ?: defaultUnit())
     val error = MutableStateFlow<String?>(null)
     val notice = MutableStateFlow<String?>(null)
+
+    /** Sharing finished sessions with Health Connect: off until the lifter turns it on and allows writing. */
+    val healthConnect = MutableStateFlow(preferences.getBoolean("healthConnect", false))
+    /** Last outcome, shown on the card: "Shared · 12 sessions · 10:25 AM" or why it couldn't share. */
+    val healthStatus = MutableStateFlow<String?>(null)
+    val healthAvailability: HealthSync.Availability get() = health?.let { runCatching { it.availability }.getOrNull() } ?: HealthSync.Availability.UNAVAILABLE
+    val healthPermissions: Set<String> get() = health?.permissions.orEmpty()
+    fun healthSettingsIntent() = health?.settingsIntent()
+    fun healthInstallIntent() = health?.installIntent()
+    suspend fun healthGranted(): Boolean = health?.let { runCatching { it.granted() }.getOrDefault(false) } ?: false
+    fun setHealthConnect(on: Boolean) {
+        healthConnect.value = on
+        preferences.edit().putBoolean("healthConnect", on).apply()
+        notice.value = if (on) "Sharing finished sessions with Health Connect." else "Stopped sharing. Sessions already shared stay in Health Connect."
+    }
+    init {
+        // Finishing, editing, moving, deleting or importing a session changes history; mirror it to Health
+        // Connect. Debounced so typing while editing a finished session doesn't write on every keystroke.
+        val health = health
+        if (health != null) viewModelScope.launch {
+            combine(history, healthConnect) { sessions, on -> sessions to on }.debounce(1_500).collectLatest { (sessions, on) ->
+                if (!on) return@collectLatest
+                try {
+                    if (!health.granted()) { healthStatus.value = "Allow Health Connect again to keep sharing."; return@collectLatest }
+                    val count = health.share(sessions)
+                    healthStatus.value = "Shared · ${count(count, "session")} · ${java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date())}"
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    runCatching { android.util.Log.w("IronIndex", "Health Connect sync failed", e) }
+                    healthStatus.value = "Couldn’t share with Health Connect. It will try again after your next change."
+                }
+            }
+        }
+    }
     val opened = MutableStateFlow<String?>(null)
     /** Person chip to select when the next workout opens; null means You. */
     val openedParticipant = MutableStateFlow<String?>(null)
@@ -165,6 +205,7 @@ class IronIndexViewModel @JvmOverloads constructor(application: Application, pri
         }
         opened.value = null
     }
+    // A deleted session leaves history, and the next Health Connect sync removes its record.
     fun delete(id: String) = run { store.delete(id); if (opened.value == id) opened.value = null }
     fun savePartner(partner: Partner) = run {
         require(partner.name.isNotBlank()) { "Enter a partner name." }

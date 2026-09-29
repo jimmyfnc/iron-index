@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 8-11 auto backup: same scope as data_extraction_rules.xml. -->
+<!-- Android 8-11 auto backup: same scope as data_extraction_rules.xml (health_connect_shared.xml left out on purpose). -->
 <full-backup-content>
     <include domain="database" path="." />
     <include domain="sharedpref" path="ironindex.xml" />

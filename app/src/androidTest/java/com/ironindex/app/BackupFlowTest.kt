@@ -46,13 +46,13 @@ class BackupFlowTest {
         val routine = session.freshCopy(true, "Push routine")
         runBlocking { source.save(session); source.save(routine); source.savePartner(alex); source.saveEquipment(machine); source.saveExercise(custom) }
 
-        val exporter = IronIndexViewModel(app, source)
+        val exporter = IronIndexViewModel(app, source, null)
         exporter.exportTo(Uri.fromFile(file))
         compose.waitUntil(10000) { exporter.lastExport.value != null && file.length() > 0 }
         assertTrue(file.readText().contains("\"format\":\"ironindex-backup\""))
         clearExportDate() // The import side plays a fresh phone that has never exported.
 
-        val vm = IronIndexViewModel(app, target)
+        val vm = IronIndexViewModel(app, target, null)
         compose.setContent { MaterialTheme(colorScheme = IronIndexColors) { IronIndexApp(vm) } }
         compose.onNodeWithText("Backup").performClick()
         awaitText("Backup & restore")
@@ -92,7 +92,7 @@ class BackupFlowTest {
 
     @Test fun aDamagedFileShowsAnErrorAndWritesNothing() {
         file.writeText("{\"format\":\"ironindex-backup\",\"workouts\":[{\"id\":")
-        val vm = IronIndexViewModel(app, target)
+        val vm = IronIndexViewModel(app, target, null)
         compose.setContent { MaterialTheme(colorScheme = IronIndexColors) { IronIndexApp(vm) } }
         compose.runOnIdle { vm.readImport(Uri.fromFile(file)) }
         awaitText("isn’t a readable IronIndex backup")

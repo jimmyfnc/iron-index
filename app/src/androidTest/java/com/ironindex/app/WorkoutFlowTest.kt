@@ -28,7 +28,7 @@ class WorkoutFlowTest {
     @Before fun setup() {
         val vm = ViewModelProvider(holder, object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                @Suppress("UNCHECKED_CAST") return IronIndexViewModel(app, store) as T
+                @Suppress("UNCHECKED_CAST") return IronIndexViewModel(app, store, null) as T
             }
         })[IronIndexViewModel::class.java]
         compose.setContent { MaterialTheme(colorScheme = IronIndexColors) { IronIndexApp(vm) } }

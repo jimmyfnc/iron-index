@@ -30,6 +30,8 @@ It lives independently of Discipline; neither app needs the other installed.
   includes secondary muscles and custom names; Arms includes Biceps and Triceps.
 - Export a complete backup file and import it on any phone (merge by ID, never delete);
   Android auto backup covers the database and settings.
+- Optionally share finished sessions (outline only) with Health Connect, so Discipline and other
+  apps can see you trained. Write-only; nothing leaves the phone through IronIndex.
 - Compare previous sessions and review progress charts, PRs, volume, frequency,
   muscle counts and matched-side discrepancies.
 

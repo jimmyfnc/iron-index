@@ -5,6 +5,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.selection.selectable
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
@@ -431,6 +433,62 @@ private val equipmentSaver = androidx.compose.runtime.saveable.Saver<Equipment?,
 
 fun ExerciseMode.displayName(): String = when (this) { ExerciseMode.BILATERAL -> "Both sides together"; ExerciseMode.SINGLE_ARM -> "Single-arm · Left / Right"; ExerciseMode.SINGLE_LEG -> "Single-leg · Left / Right" }
 
+/** Opt-in sharing of finished sessions with Health Connect (write-only), so other apps can see you trained. */
+@Composable
+private fun HealthConnectCard(vm: IronIndexViewModel) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val enabled by vm.healthConnect.collectAsStateWithLifecycle()
+    val status by vm.healthStatus.collectAsStateWithLifecycle()
+    val availability = vm.healthAvailability
+    // Null until checked, so the switch doesn't flash off on every visit. Re-checked on return from Health Connect's settings.
+    var granted by remember { mutableStateOf<Boolean?>(null) }
+    // After a refusal Health Connect may stop asking, so offer its settings instead.
+    var refused by rememberSaveable { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    androidx.lifecycle.compose.LifecycleResumeEffect(enabled) {
+        val job = scope.launch { granted = vm.healthGranted() }
+        onPauseOrDispose { job.cancel() }
+    }
+    val request = rememberLauncherForActivityResult(androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()) { result ->
+        granted = result.containsAll(vm.healthPermissions)
+        refused = granted != true
+        if (granted == true) vm.setHealthConnect(true)
+        else vm.notice.value = "Health Connect didn’t allow IronIndex to save workouts. Use Open Health Connect to allow it."
+    }
+    fun toggle(on: Boolean) = when {
+        !on -> vm.setHealthConnect(false)
+        granted == true -> vm.setHealthConnect(true)
+        else -> request.launch(vm.healthPermissions)
+    }
+    val sharing = enabled && granted != false
+    Surface(color = Panel, shape = MaterialTheme.shapes.large) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val canToggle = availability == HealthSync.Availability.AVAILABLE
+            Row(verticalAlignment = Alignment.CenterVertically,
+                modifier = if (canToggle) Modifier.fillMaxWidth().toggleable(value = sharing, role = Role.Switch, onValueChange = ::toggle) else Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Share workouts with Health Connect", fontWeight = FontWeight.Bold)
+                    Text("Finished sessions (name, time, strength training) so apps like Discipline and Samsung Health can see you trained. Sets and weights stay here.",
+                        color = Muted, fontSize = 13.sp)
+                }
+                if (canToggle) Switch(checked = sharing, onCheckedChange = null, modifier = Modifier.padding(start = 8.dp))
+            }
+            when (availability) {
+                HealthSync.Availability.UNAVAILABLE -> Text("Health Connect isn't available on this phone.", color = Coral, fontSize = 13.sp)
+                HealthSync.Availability.NEEDS_UPDATE -> {
+                    Text("Install or update Health Connect to share workouts.", color = Coral, fontSize = 13.sp)
+                    TextButton(onClick = { runCatching { vm.healthInstallIntent()?.let(context::startActivity) } }) { Text("Get Health Connect") }
+                }
+                HealthSync.Availability.AVAILABLE -> {
+                    if (enabled && granted == false) Text("Allow Health Connect again to keep sharing.", color = Coral, fontSize = 13.sp)
+                    else if (sharing) status?.let { Text(it, color = Muted, fontSize = 13.sp) }
+                    if (enabled || refused) TextButton(onClick = { runCatching { vm.healthSettingsIntent()?.let(context::startActivity) } }) { Text("Open Health Connect") }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun BackupScreen(workouts: List<Workout>, partners: List<Partner>, vm: IronIndexViewModel, back: () -> Unit) {
     val lastExport by vm.lastExport.collectAsStateWithLifecycle()
@@ -459,6 +517,7 @@ fun BackupScreen(workouts: List<Workout>, partners: List<Partner>, vm: IronIndex
                 Icon(Icons.Rounded.Download, null); Spacer(Modifier.width(8.dp)); Text("Import backup")
             }
         }
+        item { HealthConnectCard(vm) }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Importing adds what's missing and never deletes anything. Importing the same file twice changes nothing. A workout edited more recently in the file replaces the older copy.", color = Muted, fontSize = 13.sp)

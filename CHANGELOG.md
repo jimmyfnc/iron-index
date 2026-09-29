@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0 - 2026-09-29
+
+- **Share workouts with Health Connect.** Turn it on in Train → Backup and each finished session is saved to Health Connect, so apps like Discipline and Samsung Health can see you trained. It's off until you switch it on and allow it.
+- Only the outline is shared: the session's name, start and end time, and "strength training", plus a note like "5 exercises · 18 sets". Your sets, weights, machines, setup and partners stay in IronIndex, and IronIndex never reads anything from Health Connect.
+- Edit a session or move its date and the shared copy updates; delete it and it's removed. Sessions where only partners logged sets aren't shared.
+- The card shows when it last shared, or why it couldn't, and has a button to open Health Connect if you need to allow it again.
+
 ## 0.8.1 - 2026-09-29
 
 - **Words no longer break in half on smaller phones or with bigger text.** The home screen's Partners / Equipment / Backup buttons, the lb / reps boxes on each set, text-box labels and stat numbers stay on one line and shrink slightly to fit instead of wrapping ("Equipme / nt").

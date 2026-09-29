@@ -1,7 +1,7 @@
 # IronIndex
 
 A colorful, standalone Android workout tracker. Built with Kotlin, Jetpack Compose
-and Room. Works offline with no account required. Current version: **0.8.1**.
+and Room. Works offline with no account required. Current version: **0.9.0**.
 
 ## Included
 
@@ -20,6 +20,8 @@ and Room. Works offline with no account required. Current version: **0.8.1**.
 - Progress charts, weekly/monthly analytics, machine-specific PRs and L/R comparisons.
 - Backup & restore: export everything to a JSON file and import it on any phone; Android
   auto backup to your Google account and phone-to-phone transfer.
+- Health Connect sharing (opt-in, write-only): finished sessions appear in Discipline, Samsung Health
+  and other apps; sets and weights stay in IronIndex.
 
 ## Using the new features
 
@@ -56,6 +58,9 @@ and Room. Works offline with no account required. Current version: **0.8.1**.
   Downloads, email). **Import backup** shows what will be added before writing anything;
   it merges by ID, never deletes, and importing the same file twice changes nothing.
   A home-screen reminder appears when sessions haven't been backed up for two weeks.
+  **Share workouts with Health Connect** (same screen) saves each finished session's name, time
+  and type to Health Connect after you allow it; edits and deletions follow. The card shows the
+  last share and opens Health Connect if access needs allowing again.
 - **Progress**: choose a person and a specific exercise/equipment/side series. Tap chart
   points or open the chart values list. Metric definitions are shown beside the results.
 
@@ -87,6 +92,10 @@ Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
 0.2.0: [Partner + Left/Right logging](docs/screenshots/0.2.0/logging.png) ·
 [Reordering](docs/screenshots/0.2.0/reorder.png) ·
 [Progress](docs/screenshots/0.2.0/progress.png). These previews use synthetic test data.
+
+0.9.0: [Health Connect card](docs/screenshots/0.9.0/health-connect-card.png) ·
+[Entry in Health Connect](docs/screenshots/0.9.0/health-connect-entry.png) ·
+[What's shared](docs/screenshots/0.9.0/health-connect-privacy.png).
 
 0.8.1: [Small screen, before](docs/screenshots/0.8.1/before-small-text.png) ·
 [after](docs/screenshots/0.8.1/after-small-text.png) (360dp, large text).
@@ -124,6 +133,8 @@ See
 - `Load.kt`: starting weights, totals, plate math and re-basing typed weights.
 - `Setup.kt`: machine setup settings, per-person values and "last time" lookups.
 - `FitText.kt`: one-line labels that shrink to fit instead of wrapping on small screens or large text.
+- `HealthSession.kt`, `HealthSync.kt`, `HealthPrivacyActivity.kt`: what is shared with Health Connect, the
+  sync (only new/changed sessions; removals), and the explanation Health Connect links to.
 - `app/schemas`: Room schema history; commit schema changes with migrations.
 - `.githooks/`, `scripts/install-hooks.sh`: release hygiene and doc-drift checks.
 - `docs/ROADMAP.md`, `docs/brainstorms/`, `docs/archive/`: backlog, live and shipped designs.

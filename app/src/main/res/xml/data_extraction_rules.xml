@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 12+: workouts (Room database) and settings go to Google backup and to a new phone. -->
+<!-- Android 12+: workouts (Room database) and settings go to Google backup and to a new phone.
+     health_connect_shared.xml (what was shared with Health Connect) is deliberately not included:
+     a restored phone's Health Connect starts empty, so everything is shared afresh. -->
 <data-extraction-rules>
     <cloud-backup>
         <include domain="database" path="." />
