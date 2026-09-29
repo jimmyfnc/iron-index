@@ -94,4 +94,17 @@ class LoadTest {
         assertNull(old.baseWeight); assertEquals(LoadMode.TOTAL, old.loadMode); assertNull(old.baseLabel)
         assertEquals("starts at 167 lb · log plates only", sled.baseLabel)
     }
+
+    @Test fun renamingASnapshotKeepsTheLoadItWasLoggedWith() {
+        val renamed = sled.renamedLike(Equipment(id = "sled", type = "Leg press", brand = "Hammer", model = "Linear", location = "Downtown", baseWeight = 100.0, loadMode = LoadMode.TOTAL))
+        assertEquals("Leg press · Hammer · Linear · Downtown", renamed.label)
+        assertEquals(167.0, renamed.baseWeight!!, 1e-9); assertEquals(LoadMode.ADDED, renamed.loadMode)
+    }
+
+    @Test fun equipmentUsesCountsOnlyWorkoutsWithTypedWeights() {
+        val typed = Workout(name = "A", exercises = listOf(entry(sled).copy(sets = listOf(SetEntry(weight = "90")))))
+        val blank = Workout(name = "B", exercises = listOf(entry(sled)))
+        val other = Workout(name = "C", exercises = listOf(entry(bar).copy(sets = listOf(SetEntry(weight = "135")))))
+        assertEquals(1, equipmentUses(listOf(typed, blank, other), "sled"))
+    }
 }

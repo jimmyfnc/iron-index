@@ -255,4 +255,35 @@ class AdvancedFlowTest {
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Exercise progression"))
         compose.onAllNodesWithText("Weight").onFirst().assertExists()
     }
+
+    @Test fun fixingTheMachineAndItsNameFromInsideAWorkout() {
+        val matrix = Equipment(type = "Chest press", brand = "Matrix")
+        val lifeFitness = Equipment(type = "Chest press", brand = "Life Fitness")
+        val entry = WorkoutExercise(exercise = Exercise(name = "Chest press"), equipmentId = matrix.id, equipmentSnapshot = matrix,
+            sets = listOf(SetEntry(weight = "100", reps = "10", complete = true)))
+        val workout = Workout(name = "Machine fix", exercises = listOf(entry))
+        runBlocking { store.saveEquipment(matrix); store.saveEquipment(lifeFitness); store.save(workout) }
+        launch(workout)
+        compose.onNodeWithContentDescription("Edit Chest press details").performClick()
+        awaitText("Exercise details")
+        compose.onNodeWithText("Choose equipment").performClick()
+        compose.onNodeWithText("Chest press · Life Fitness").performClick()
+        compose.onNodeWithText("Logged sets (you: 1) will move to Chest press · Life Fitness with weights as typed.").assertExists()
+        compose.onNodeWithText("Save exercise").performClick()
+        compose.waitUntil(10000) { runBlocking { store.workouts.first().single().exercises.single().equipmentId == lifeFitness.id } }
+        val moved = runBlocking { store.workouts.first().single().exercises.single() }
+        assertTrue(moved.sets.single().complete); assertEquals("100", moved.sets.single().weight)
+        awaitText("Chest press · Life Fitness")
+        // Fix the machine's name without leaving the workout.
+        compose.onNodeWithContentDescription("Edit Chest press details").performClick()
+        awaitText("Exercise details")
+        compose.onNodeWithContentDescription("Edit Chest press · Life Fitness").performClick()
+        awaitText("Edit equipment")
+        compose.onNodeWithText("Model").performTextInput("Insignia")
+        compose.onNodeWithText("Save equipment").performClick()
+        compose.waitUntil(10000) { runBlocking { store.workouts.first().single().exercises.single().equipmentSnapshot?.model == "Insignia" } }
+        compose.onNodeWithText("Cancel").performClick()
+        awaitText("Chest press · Life Fitness · Insignia")
+        assertEquals("Insignia", runBlocking { store.equipment.first().single { it.id == lifeFitness.id }.model })
+    }
 }

@@ -1,5 +1,13 @@
 # IronIndex verification
 
+## 0.7.0 - 2026-09-28
+
+- assembleDebug, all 62 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 30 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned (no phone attached).
+- Unit coverage (LoadTest): a relabelled snapshot keeps the starting weight and logging style it was logged with; machine usage counts only workouts with typed weights.
+- Connected coverage: a rename reaches a finished session's snapshot while its 167 lb plates-only load and 3,470 lb volume stay; switching a checked 180 × 10 set to another machine keeps it checked and typed, recomputes volume with the new sled and shows the notice, without touching the old machine; a picker's older copy never overwrites a newer starting weight; discarding a session edit keeps a machine rename made during it. UI: from inside a workout, Choose equipment after a checked set moves it ("Logged sets (you: 1) will move to …"), then Edit adds a model and the card shows the new name.
+- Manual emulator run: imported a seeded backup, moved a checked 180 lb leg press set from the Hammer Strength (167 lb sled, plates only) to the Life Fitness leg press; the set stayed checked at 180, the hint changed to "Weight as logged" and the "Weights kept as typed" notice appeared. Edit → Model "Signature" updated both the dialog and the card immediately.
+- A code review found Discard restoring the old machine snapshot for the session being edited, a stale picker copy able to undo a just-saved starting weight (also closes an older path where re-adding a starter exercise could reset its machine), partner sets moving without saying so, the picked machine lost on rotation, name clashes closing the form, and "this machine" wording for Unspecified. All fixed with tests before release.
+
 ## 0.6.1 - 2026-09-28
 
 - assembleDebug, all 60 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 25 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned (no phone attached). The first full connected run had one timing failure in the existing plates-only logging test (a checkbox tapped before its value landed); it passed on a class rerun and in a second full run.

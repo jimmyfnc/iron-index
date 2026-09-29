@@ -156,9 +156,6 @@ private fun ProfileStat(value: String, label: String, modifier: Modifier) {
 fun EquipmentManager(equipment: List<Equipment>, workouts: List<Workout>, save: (Equipment) -> Unit, update: (Equipment, Boolean) -> Unit, back: () -> Unit) {
     var adding by rememberSaveable { mutableStateOf(false) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
-    // An edit that changes what typed numbers mean, waiting for "how were past weights typed?".
-    var pending by remember { mutableStateOf<Equipment?>(null) }
-    fun uses(id: String) = workouts.count { w -> w.exercises.any { e -> e.equipmentKey() == id && e.sets.any { it.weight.isNotBlank() } } }
     var showArchived by rememberSaveable { mutableStateOf(false) }
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { ManagerHeading("Equipment library", "Brand + model + optional gym or nickname. Your workout history remembers the equipment you used.", back) }
@@ -177,25 +174,35 @@ fun EquipmentManager(equipment: List<Equipment>, workouts: List<Workout>, save: 
                 }
             }
         }
-        item { Text("To use a different machine, create a new equipment profile. Archiving keeps existing sessions and comparisons intact. Changing a starting weight applies to new sessions; past sessions keep what they were logged with.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("To use a different machine, create a new equipment profile. Archiving keeps existing sessions and comparisons intact. Name fixes show everywhere, past sessions included; a new starting weight applies to new sessions unless you say past weights were plates only.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
     if (adding) EquipmentEditor(null, { adding = false }) { save(it); adding = false }
-    editingId?.let { id -> equipment.find { it.id == id }?.let { e -> EquipmentEditor(e, { editingId = null }) { edited ->
-        editingId = null
-        if (loadMeaningChanged(e, edited) && uses(e.id) > 0) pending = edited else update(edited, false)
-    } } }
-    pending?.let { edited ->
+    editingId?.let { id -> equipment.find { it.id == id }?.let { e -> EquipmentEditFlow(e, equipment, { equipmentUses(workouts, it) }, { editingId = null }, update) } }
+}
+
+/** Edits a catalog machine, first asking how past weights were typed when the change would reinterpret logged numbers. */
+@Composable
+fun EquipmentEditFlow(initial: Equipment, catalog: List<Equipment>, uses: (String) -> Int, dismiss: () -> Unit, update: (Equipment, Boolean) -> Unit) {
+    // An edit that changes what typed numbers mean, waiting for "how were past weights typed?".
+    var pending by remember(initial.id) { mutableStateOf<Equipment?>(null) }
+    val edited = pending
+    // Checked here so a clashing name keeps the form open with the typing intact.
+    val clash = { value: Equipment -> "Another machine already has this type, brand, model and gym.".takeIf { catalog.any { it.id != value.id && it.identity == value.identity } } }
+    if (edited == null) EquipmentEditor(initial, dismiss, validate = clash) { value ->
+        if (loadMeaningChanged(initial, value) && uses(initial.id) > 0) pending = value else { update(value, false); dismiss() }
+    } else {
         val base = edited.baseIn(edited.baseUnit)
-        AlertDialog(onDismissRequest = { pending = null }, title = { Text("How were past weights typed?") }, text = {
+        val used = uses(edited.id)
+        AlertDialog(onDismissRequest = dismiss, title = { Text("How were past weights typed?") }, text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("${count(uses(edited.id), "session or routine")} already ${if (uses(edited.id) == 1) "has" else "have"} weights on ${edited.type}.")
+                Text("${count(used, "session or routine")} already ${if (used == 1) "has" else "have"} weights on ${edited.type}.")
                 if (edited.loadMode == LoadMode.ADDED && base != null)
                     Text("Plates only: count the ${weightText(base)} ${edited.baseUnit} ${baseName(edited.type)} in them too, so past totals and PRs match from now on.", color = Muted, fontSize = 13.sp)
                 else Text("As totals: the numbers you typed were already the full weight.", color = Muted, fontSize = 13.sp)
                 Text("Keep totals: past sessions stay exactly as logged; routines and today's workout adjust their numbers to keep the same totals.", color = Muted, fontSize = 13.sp)
             }
-        }, confirmButton = { TextButton(onClick = { update(edited, true); pending = null }) { Text(if (edited.loadMode == LoadMode.ADDED) "Plates only" else "As totals") } },
-            dismissButton = { TextButton(onClick = { update(edited, false); pending = null }) { Text("Keep totals") } })
+        }, confirmButton = { TextButton(onClick = { update(edited, true); dismiss() }) { Text(if (edited.loadMode == LoadMode.ADDED) "Plates only" else "As totals") } },
+            dismissButton = { TextButton(onClick = { update(edited, false); dismiss() }) { Text("Keep totals") } })
     }
 }
 
@@ -209,7 +216,7 @@ private fun ManagerHeading(title: String, body: String, back: () -> Unit) {
 }
 
 @Composable
-fun EquipmentEditor(initial: Equipment?, dismiss: () -> Unit, save: (Equipment) -> Unit) {
+fun EquipmentEditor(initial: Equipment?, dismiss: () -> Unit, validate: (Equipment) -> String? = { null }, save: (Equipment) -> Unit) {
     val key = initial?.id ?: "new"
     var type by rememberSaveable(key) { mutableStateOf(initial?.type.orEmpty()) }
     var brand by rememberSaveable(key) { mutableStateOf(initial?.brand.orEmpty()) }
@@ -221,12 +228,18 @@ fun EquipmentEditor(initial: Equipment?, dismiss: () -> Unit, save: (Equipment) 
     var mode by rememberSaveable(key) { mutableStateOf(initial?.takeIf { it.baseWeight != null }?.loadMode?.name) }
     val effectiveMode = mode?.let(LoadMode::valueOf) ?: suggestedLoadMode(type)
     val baseValue = base.toWeightOrNull()?.takeIf { it > 0 }
+    val template = remember(key) { initial ?: Equipment(type = "") }
+    val result = template.copy(type = type.trim(), brand = brand.trim(), model = model.trim(), location = location.trim(),
+        baseWeight = baseValue, baseUnit = baseUnit, loadMode = if (baseValue == null) LoadMode.TOTAL else effectiveMode)
+    val problem = validate(result)
     AlertDialog(onDismissRequest = dismiss, title = { Text(if (initial == null) "Add equipment" else "Edit equipment") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()).imePadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(type, { type = it }, label = { Text("Equipment type *") }, placeholder = { Text("Incline press machine") })
             OutlinedTextField(brand, { brand = it }, label = { Text("Brand") }, placeholder = { Text("Hammer Strength") })
             OutlinedTextField(model, { model = it }, label = { Text("Model") }, placeholder = { Text("ISO-Lateral Incline Press") })
             OutlinedTextField(location, { location = it }, label = { Text("Gym / nickname (optional)") })
+            problem?.let { Text(it, color = Coral, style = MaterialTheme.typography.bodySmall) }
+            if (initial != null) Text("Name changes show everywhere this machine is used, past sessions included.", style = MaterialTheme.typography.bodySmall, color = Muted)
             Text("Starting weight", fontWeight = FontWeight.Bold)
             Text("The bar, sled or carriage before plates. Leave blank for dumbbells and cables.", style = MaterialTheme.typography.bodySmall, color = Muted)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -249,10 +262,7 @@ fun EquipmentEditor(initial: Equipment?, dismiss: () -> Unit, save: (Equipment) 
                 }
             }
         }
-    }, confirmButton = { TextButton(enabled = type.isNotBlank() && (base.isBlank() || baseValue != null), onClick = {
-        save((initial ?: Equipment(type = "")).copy(type = type.trim(), brand = brand.trim(), model = model.trim(), location = location.trim(),
-            baseWeight = baseValue, baseUnit = baseUnit, loadMode = if (baseValue == null) LoadMode.TOTAL else effectiveMode))
-    }) { Text("Save equipment") } },
+    }, confirmButton = { TextButton(enabled = type.isNotBlank() && (base.isBlank() || baseValue != null) && problem == null, onClick = { save(result) }) { Text("Save equipment") } },
         dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } })
 }
 
@@ -311,7 +321,12 @@ fun WorkoutPartnersDialog(workout: Workout, partners: List<Partner>, vm: IronInd
 
 @Composable
 fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: List<Equipment>, title: String,
-                   modeLocked: Boolean = false, equipmentLocked: Boolean = false, askOnRename: Boolean = false, dismiss: () -> Unit, save: (Exercise, Equipment?) -> Unit) {
+                   modeLocked: Boolean = false,
+                   /** Checked sets per person on this entry ("you: 2, Alex: 3"); they move with a machine change. Null when none. */
+                   loggedSets: String? = null, askOnRename: Boolean = false,
+                   /** Edits the chosen machine in the catalog right away (name fixes, starting weight); null hides the Edit button. */
+                   editEquipment: ((Equipment, Boolean) -> Unit)? = null, equipmentUses: (String) -> Int = { 0 },
+                   dismiss: () -> Unit, save: (Exercise, Equipment?) -> Unit) {
     // "" until chosen, then "rename" (same exercise and history) or "separate" (new exercise, new history).
     var identity by rememberSaveable { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf(initial.name) }
@@ -319,8 +334,11 @@ fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: Lis
     var secondary by rememberSaveable { mutableStateOf(initial.secondaryMuscles.joinToString(", ")) }
     var target by rememberSaveable { mutableStateOf(initial.target) }
     var mode by rememberSaveable { mutableStateOf(initial.mode.name) }
-    var equipment by remember { mutableStateOf(initialEquipment) }
+    var chosen by rememberSaveable(stateSaver = equipmentSaver) { mutableStateOf(initialEquipment) }
+    // Follow catalog edits (such as a name fixed with Edit) for the machine on screen.
+    val equipment = chosen?.let { c -> catalog.find { it.id == c.id } ?: c }
     var picking by rememberSaveable { mutableStateOf(false) }
+    var editingEquipment by rememberSaveable { mutableStateOf(false) }
     AlertDialog(onDismissRequest = dismiss, title = { Text(title) }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(name, { name = it }, label = { Text("Exercise name *") })
@@ -336,8 +354,17 @@ fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: Lis
             }
             Text("Equipment for this entry", fontWeight = FontWeight.Bold)
             Text(equipment?.label ?: "Unspecified equipment")
-            OutlinedButton(onClick = { picking = true }, enabled = !equipmentLocked) { Text("Choose equipment") }
-            if (equipmentLocked) Text("Equipment is locked after a completed set. Add another entry to switch machines.")
+            // This session's own load settings for its machine; the catalog's for a newly picked one.
+            (if (equipment?.id == initialEquipment?.id) initialEquipment else equipment)?.baseLabel?.let { Text(it.replaceFirstChar { c -> c.uppercase() }, color = Lime, fontSize = 13.sp) }
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { picking = true }) { Text("Choose equipment") }
+                // Only machines already in the catalog; a brand-new one is saved with the exercise.
+                if (editEquipment != null && equipment != null && catalog.any { it.id == equipment.id }) OutlinedButton(onClick = { editingEquipment = true },
+                    modifier = Modifier.semantics { contentDescription = "Edit ${equipment.label}" }) { Icon(Icons.Rounded.Edit, null); Spacer(Modifier.width(4.dp)); Text("Edit") }
+            }
+            if (loggedSets != null) Text(if (equipment?.id != initialEquipment?.id) "Logged sets ($loggedSets) will move to ${equipment?.label ?: "unspecified equipment"} with weights as typed."
+                else "Picked the wrong machine? Choose the right one and the logged sets ($loggedSets) move with it. Switched machines partway? Add another entry instead.",
+                style = MaterialTheme.typography.bodySmall, color = Muted)
             if (!modeLocked) ChoiceField("How is this performed?", mode, ExerciseMode.entries.map { it.name to it.displayName() }) { mode = it }
             else Text("${initial.mode.displayName()} · add a new entry to change sides after entering values.")
             OutlinedTextField(primary, { primary = it }, label = { Text("Primary muscles (comma separated)") }, placeholder = { Text("Chest, upper chest") })
@@ -353,8 +380,15 @@ fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: Lis
             secondaryMuscles = muscles(secondary).filter { value -> first.none { it.equals(value, true) } },
             target = target.trim(), mode = ExerciseMode.valueOf(mode), defaultEquipmentId = equipment?.id), equipment)
     }) { Text("Save exercise") } }, dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } })
-    if (picking) EquipmentPicker(catalog, { picking = false }) { equipment = it; picking = false }
+    if (picking) EquipmentPicker(catalog, { picking = false }) { chosen = it; picking = false }
+    if (editingEquipment && editEquipment != null && equipment != null) EquipmentEditFlow(equipment, catalog, equipmentUses, { editingEquipment = false }, editEquipment)
 }
+
+/** Keeps a picked (possibly not yet saved) machine across rotation and process death. */
+private val equipmentSaver = androidx.compose.runtime.saveable.Saver<Equipment?, String>(
+    save = { value -> value?.let { storageJson.encodeToString(Equipment.serializer(), it) } ?: "" },
+    restore = { text -> text.takeIf { it.isNotEmpty() }?.let { runCatching { storageJson.decodeFromString(Equipment.serializer(), it) }.getOrNull() } },
+)
 
 fun ExerciseMode.displayName(): String = when (this) { ExerciseMode.BILATERAL -> "Both sides together"; ExerciseMode.SINGLE_ARM -> "Single-arm · Left / Right"; ExerciseMode.SINGLE_LEG -> "Single-leg · Left / Right" }
 

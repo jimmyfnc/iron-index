@@ -133,6 +133,15 @@ class WorkoutStore(context: Context, databaseName: String = "iron-index.db") {
     suspend fun saveExercise(exercise: Exercise) = dao.putExercise(ExerciseRow(exercise.id, json.encodeToString(exercise)))
     suspend fun saveEquipment(value: Equipment): Equipment = mutex.withLock { putEquipment(value) }
 
+    /**
+     * The stored machine for a picker choice, adding it only if it's new. A picker's copy can be moments old,
+     * so it must never overwrite an edit (such as a new starting weight) saved in the meantime.
+     */
+    suspend fun ensureEquipment(value: Equipment): Equipment = mutex.withLock {
+        dao.allEquipment().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Equipment>(it) }.find { it.id == value.id }
+            ?: putEquipment(value)
+    }
+
     private suspend fun putEquipment(value: Equipment): Equipment {
         val all = dao.allEquipment().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Equipment>(it) }
         val existing = all.firstOrNull { it.identity == value.identity && it.id != value.id }
@@ -148,23 +157,15 @@ class WorkoutStore(context: Context, databaseName: String = "iron-index.db") {
     /**
      * Saves an edited machine and carries it into workouts that use it. Routines and the workout in progress
      * always pick up the change (typed numbers adjusted to keep their totals, unless [reinterpretPast]).
-     * Finished sessions keep their snapshot, unless [reinterpretPast]: the lifter said the numbers already
-     * typed were plates only, so every log on this machine should count the new starting weight.
+     * Finished sessions take the new name but keep their load settings, unless [reinterpretPast]: the lifter
+     * said the numbers already typed were plates only, so every log on this machine should count the new starting weight.
      */
     suspend fun applyEquipment(value: Equipment, reinterpretPast: Boolean): Equipment = mutex.withLock {
         val saved = putEquipment(value)
         val now = System.currentTimeMillis()
         db.withTransaction {
             dao.all().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Workout>(it) }.forEach { w ->
-                val finished = w.finishedAt != null && !w.isTemplate
-                val updated = w.copy(exercises = w.exercises.map { e ->
-                    when {
-                        e.equipmentKey() != saved.id -> e
-                        reinterpretPast -> e.copy(equipmentSnapshot = saved)
-                        finished -> e
-                        else -> e.rebasedTo(saved, w.unit)
-                    }
-                })
+                val updated = w.withEquipmentEdit(saved, reinterpretPast)
                 if (updated != w) write(updated.copy(updatedAt = now))
             }
         }

@@ -1,7 +1,7 @@
 # IronIndex
 
 A colorful, standalone Android workout tracker. Built with Kotlin, Jetpack Compose
-and Room. Works offline with no account required. Current version: **0.6.1**.
+and Room. Works offline with no account required. Current version: **0.7.0**.
 
 ## Included
 
@@ -36,7 +36,10 @@ and Room. Works offline with no account required. Current version: **0.6.1**.
   with their targets). Adding an exercise while a partner chip is selected adds it only for them.
 - **Exercise details button**: select equipment, muscles and side mode. Change side mode
   before entering values. Renaming asks whether it's the same exercise (one history) or
-  a different one (its own history). To switch machines after completing sets, add another entry.
+  a different one (its own history). Picked the wrong machine? **Choose equipment** moves
+  the logged sets to the right one, weights as typed. **Edit** fixes the machine's name or
+  starting weight without leaving the workout; name fixes show in past sessions too. If
+  you switched machines partway through, add another entry instead.
 - **Reorder**: hold and drag a handle in the order sheet, or use the arrows.
 - **Exercise history**: see prior completed sessions for that person and machine.
 - **Edit a finished session**: open it from History and tap **Edit session**. Fix values,
@@ -78,6 +81,9 @@ Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
 0.2.0: [Partner + Left/Right logging](docs/screenshots/0.2.0/logging.png) ·
 [Reordering](docs/screenshots/0.2.0/reorder.png) ·
 [Progress](docs/screenshots/0.2.0/progress.png). These previews use synthetic test data.
+
+0.7.0: [Fix the machine](docs/screenshots/0.7.0/fix-machine.png) ·
+[Moved sets](docs/screenshots/0.7.0/moved-sets.png) · [Edit the machine](docs/screenshots/0.7.0/edit-machine.png).
 
 0.6.1: [Pinned person chips](docs/screenshots/0.6.1/pinned-people.png).
 

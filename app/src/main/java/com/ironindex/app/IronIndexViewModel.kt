@@ -147,7 +147,7 @@ class IronIndexViewModel @JvmOverloads constructor(application: Application, pri
     }
     fun edit(id: String, transform: (Workout) -> Workout) = run { store.edit(id, transform) }
     fun addExercise(id: String, exercise: Exercise, custom: Boolean, equipment: Equipment? = legacyEquipment(exercise), partnerOnly: String? = null) = run {
-        val savedEquipment = equipment?.let { store.saveEquipment(it) }
+        val savedEquipment = equipment?.let { store.ensureEquipment(it) }
         val normalized = exercise.copy(equipment = "", brand = "", defaultEquipmentId = savedEquipment?.id)
         if (custom) store.saveExercise(normalized)
         store.edit(id) { w -> w.copy(exercises = w.exercises + w.newEntry(normalized, savedEquipment, partnerOnly)) }
@@ -179,28 +179,41 @@ class IronIndexViewModel @JvmOverloads constructor(application: Application, pri
     /** Saves an edited catalog machine and carries it into routines, the workout in progress and (if asked) past logs. */
     fun updateEquipment(equipment: Equipment, reinterpretPast: Boolean) = run {
         require(equipment.type.isNotBlank()) { "Enter the equipment type." }
-        store.applyEquipment(equipment, reinterpretPast)
+        val saved = store.applyEquipment(equipment, reinterpretPast)
+        // Equipment edits stay when a session edit is discarded, so the copy Discard restores takes them too.
+        editingOriginal.value?.let { original ->
+            val updated = original.withEquipmentEdit(saved, reinterpretPast)
+            if (updated != original) {
+                editingOriginal.value = updated
+                preferences.edit().putString("editingOriginal", storageJson.encodeToString(Workout.serializer(), updated)).apply()
+            }
+        }
     }
+    /**
+     * Saves an entry's details. Picking a different machine after logging sets fixes a wrong choice: the sets
+     * move to the new machine with their weights as typed, and totals follow the new machine's starting weight.
+     */
     fun editDetails(workoutId: String, entryId: String, exercise: Exercise, equipment: Equipment?) = run {
         val entry = workouts.value.find { it.id == workoutId }?.exercises?.find { it.id == entryId }
-        // Unchanged equipment keeps this session's own snapshot; only a newly picked machine goes through the catalog.
-        val saved = if (equipment != null && entry != null && equipment.id == entry.equipmentKey()) entry.equipmentSnapshot ?: equipment
-            else equipment?.let { store.saveEquipment(it) }
-        val normalized = exercise.copy(equipment = "", brand = "", defaultEquipmentId = saved?.id)
+        // Only a newly picked machine goes through the catalog; the current one is never rewritten from a snapshot.
+        val picked = if (equipment != null && equipment.id != entry?.equipmentKey()) store.ensureEquipment(equipment) else equipment
+        val normalized = exercise.copy(equipment = "", brand = "", defaultEquipmentId = picked?.id)
+        var retotalled = false
         store.edit(workoutId) { w -> w.copy(exercises = w.exercises.map { e ->
             if (e.id != entryId) e else {
                 val changedMode = e.exercise.mode != exercise.mode
                 require(!changedMode || e.sets.none { it.complete || it.reps.isNotBlank() || it.weight.isNotBlank() }) {
                     "Add a new exercise entry to change sides after entering sets."
                 }
-                require(e.equipmentKey() == saved?.id || e.sets.none { it.complete }) {
-                    "Add another exercise entry to use different equipment after logging sets."
-                }
-                e.copy(exercise = normalized, equipmentId = saved?.id, equipmentSnapshot = saved,
+                // Unchanged equipment keeps this session's own (current, locked) snapshot.
+                val snapshot = if (picked != null && picked.id == e.equipmentKey()) e.equipmentSnapshot ?: picked else picked
+                retotalled = snapshot?.id != e.equipmentKey() && e.sets.any { it.weight.isNotBlank() } && loadMeaningChanged(e.equipmentProfile(), snapshot)
+                e.copy(exercise = normalized, equipmentId = snapshot?.id, equipmentSnapshot = snapshot,
                     sets = if (changedMode) w.startingSets(e, exercise.mode) else e.sets)
             }
         }) }
         store.saveExercise(normalized)
+        if (retotalled) notice.value = "Weights kept as typed. Totals now use this machine’s starting weight."
     }
     fun move(workoutId: String, entryId: String, beforeId: String?) = edit(workoutId) { it.moveExercise(entryId, beforeId) }
     override fun onCleared() { super.onCleared(); store.close() }

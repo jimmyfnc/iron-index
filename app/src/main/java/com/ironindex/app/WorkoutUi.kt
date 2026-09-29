@@ -107,7 +107,8 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
                     update = { transform -> vm.edit(workout.id) { w -> w.copy(exercises = w.exercises.map { if (it.id == entry.id) transform(it) else it }) } },
                     details = { exercise, profile -> vm.editDetails(workout.id, entry.id, exercise, profile) },
                     remove = { vm.edit(workout.id) { w -> w.copy(exercises = w.exercises.filterNot { it.id == entry.id }) } },
-                    skip = if (tracked.isEmpty()) null else ({ vm.skipExercise(workout.id, entry.id, participantId) }), personName = personName)
+                    skip = if (tracked.isEmpty()) null else ({ vm.skipExercise(workout.id, entry.id, participantId) }), personName = personName,
+                    editEquipment = vm::updateEquipment, equipmentUses = { id -> equipmentUses(vm.workouts.value, id) })
             }
         }
         if (!readOnly) item {
@@ -146,7 +147,8 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
 @Composable
 private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, readOnly: Boolean, participantId: String?, previous: List<LoggedSet>, earlier: List<LoggedSet>, equipment: List<Equipment>,
                          update: ((WorkoutExercise) -> WorkoutExercise) -> Unit, details: (Exercise, Equipment?) -> Unit, remove: () -> Unit,
-                         skip: (() -> Unit)? = null, personName: String? = null) {
+                         skip: (() -> Unit)? = null, personName: String? = null,
+                         editEquipment: ((Equipment, Boolean) -> Unit)? = null, equipmentUses: (String) -> Int = { 0 }) {
     var editing by rememberSaveable { mutableStateOf(false) }
     var removing by rememberSaveable { mutableStateOf(false) }
     val who = personName ?: "you"
@@ -222,10 +224,18 @@ private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, readOnly: Boo
         }
     }, confirmButton = { TextButton(onClick = { editing = false }) { Text("Done") } })
     if (editing && !readOnly) ExerciseEditor(entry.exercise, entry.equipmentProfile(), equipment, "Exercise details",
-        modeLocked = entry.sets.any { it.complete || it.weight.isNotBlank() || it.reps.isNotBlank() }, equipmentLocked = entry.sets.any { it.complete }, askOnRename = true, dismiss = { editing = false }) { exercise, profile -> details(exercise, profile); editing = false }
+        modeLocked = entry.sets.any { it.complete || it.weight.isNotBlank() || it.reps.isNotBlank() }, loggedSets = loggedSummary(entry, workout), askOnRename = true,
+        editEquipment = editEquipment, equipmentUses = equipmentUses, dismiss = { editing = false }) { exercise, profile -> details(exercise, profile); editing = false }
     if (removing) ConfirmDialog("Remove ${entry.exercise.name}?", "This removes its sets for you and all partners from this workout.", "Remove", { removing = false }) { remove(); removing = false }
     if (showHistory) ExerciseHistoryDialog(earlier) { showHistory = false }
 }
+
+/** Checked sets per person, "you: 2, Alex: 3", or null when none are checked. */
+private fun loggedSummary(entry: WorkoutExercise, workout: Workout): String? =
+    (listOf<String?>(null) + workout.partners.map { it.id }).mapNotNull { id ->
+        entry.sets.count { it.complete && it.participantId == id }.takeIf { it > 0 }
+            ?.let { n -> "${if (id == null) "you" else workout.partners.first { it.id == id }.name}: $n" }
+    }.joinToString().ifEmpty { null }
 
 @Composable
 private fun SkippedExerciseRow(entry: WorkoutExercise, personName: String?, readOnly: Boolean, include: () -> Unit) {

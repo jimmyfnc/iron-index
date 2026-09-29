@@ -69,4 +69,55 @@ class EquipmentLoadTest {
         while (System.currentTimeMillis() < deadline && runBlocking { store.workouts.first().single { it.id == "draft" } }.exercises.single().exercise.primaryMuscles.isEmpty()) Thread.sleep(50)
         assertEquals(sled, runBlocking { store.equipment.first().single { it.id == "sled" } })
     }
+
+    @Test fun renamingAMachineReachesPastSessionsButKeepsTheirLoad() = runBlocking {
+        val loggedOnSled = past.copy(exercises = listOf(entry(sled, "180", true)))
+        store.saveEquipment(sled); store.save(loggedOnSled)
+        store.applyEquipment(sled.copy(brand = "Hammer", model = "Linear", baseWeight = 100.0), reinterpretPast = false)
+        val snapshot = all().getValue("past").exercises.single().equipmentSnapshot!!
+        assertEquals("Leg press · Hammer · Linear", snapshot.label)
+        assertEquals(167.0, snapshot.baseWeight!!, 1e-9)
+        assertEquals(3470.0, all().getValue("past").volume, 1e-9)
+    }
+
+    @Test fun switchingToTheRightMachineAfterLoggingKeepsWeightsAsTyped() {
+        val other = Equipment(id = "lf", type = "Leg press", brand = "Life Fitness", baseWeight = 100.0, loadMode = LoadMode.ADDED)
+        runBlocking { store.saveEquipment(plain); store.saveEquipment(other); store.save(Workout(id = "draft", name = "Now", exercises = listOf(entry(plain, "180", true)))) }
+        val vm = IronIndexViewModel(app, store)
+        runBlocking { vm.workouts.first { it.isNotEmpty() } }
+        val current = runBlocking { store.workouts.first().single() }.exercises.single()
+        vm.editDetails("draft", current.id, current.exercise, other)
+        val deadline = System.currentTimeMillis() + 10_000
+        while (System.currentTimeMillis() < deadline && runBlocking { store.workouts.first().single() }.exercises.single().equipmentId != "lf") Thread.sleep(50)
+        val moved = runBlocking { store.workouts.first().single() }
+        assertEquals(other, moved.exercises.single().equipmentSnapshot)
+        assertEquals(SetEntry(weight = "180", reps = "10", complete = true).copy(id = current.sets.single().id, groupId = current.sets.single().groupId), moved.exercises.single().sets.single())
+        assertEquals(2800.0, moved.volume, 1e-9) // 180 plates + 100 sled
+        while (System.currentTimeMillis() < deadline && vm.notice.value == null) Thread.sleep(50)
+        assertEquals("Weights kept as typed. Totals now use this machine’s starting weight.", vm.notice.value)
+        assertEquals(plain, runBlocking { store.equipment.first().single { it.id == "sled" } })
+    }
+
+    @Test fun pickingAMachineNeverOverwritesAFresherEdit() = runBlocking {
+        store.saveEquipment(plain)
+        store.applyEquipment(sled, reinterpretPast = false)
+        assertEquals(sled, store.ensureEquipment(plain)) // the picker's copy is older than the edit
+        assertEquals(sled, store.equipment.first().single { it.id == "sled" })
+        val fresh = Equipment(type = "Hack squat")
+        assertEquals(fresh, store.ensureEquipment(fresh))
+    }
+
+    @Test fun discardingASessionEditKeepsMachineEditsMadeDuringIt() {
+        runBlocking { store.saveEquipment(plain); store.save(past) }
+        val vm = IronIndexViewModel(app, store)
+        vm.beginEdit(past)
+        vm.updateEquipment(plain.copy(model = "Linear"), reinterpretPast = false)
+        val deadline = System.currentTimeMillis() + 10_000
+        while (System.currentTimeMillis() < deadline && vm.editingOriginal.value?.exercises?.single()?.equipmentSnapshot?.model != "Linear") Thread.sleep(50)
+        vm.discardEdit()
+        while (System.currentTimeMillis() < deadline && vm.editingOriginal.value != null) Thread.sleep(50)
+        val restored = all().getValue("past").exercises.single().equipmentSnapshot!!
+        assertEquals("Linear", restored.model)
+        assertEquals(plain.copy(model = "Linear"), restored)
+    }
 }

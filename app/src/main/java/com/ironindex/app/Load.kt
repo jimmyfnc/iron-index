@@ -45,6 +45,28 @@ fun WorkoutExercise.rebasedTo(current: Equipment, unit: String): WorkoutExercise
     })
 }
 
+/** This snapshot relabelled with [current]'s name, keeping the load settings its sets were logged with. */
+fun Equipment.renamedLike(current: Equipment): Equipment = copy(type = current.type, brand = current.brand, model = current.model, location = current.location)
+
+/**
+ * Carries a saved catalog edit into one workout. Routines and drafts take it (numbers adjusted to keep totals);
+ * finished sessions take the new name but keep their load, unless [reinterpretPast] says past numbers were typed on the new basis.
+ */
+fun Workout.withEquipmentEdit(saved: Equipment, reinterpretPast: Boolean): Workout {
+    val finished = finishedAt != null && !isTemplate
+    return copy(exercises = exercises.map { e ->
+        when {
+            e.equipmentKey() != saved.id -> e
+            reinterpretPast -> e.copy(equipmentSnapshot = saved)
+            finished -> e.equipmentSnapshot?.let { e.copy(equipmentSnapshot = it.renamedLike(saved)) } ?: e
+            else -> e.rebasedTo(saved, unit)
+        }
+    })
+}
+
+/** Sessions and routines with a weight typed on this machine. */
+fun equipmentUses(workouts: List<Workout>, id: String): Int = workouts.count { w -> w.exercises.any { e -> e.equipmentKey() == id && e.sets.any { it.weight.isNotBlank() } } }
+
 /** "starts at 45 lb", for pickers and the catalog. */
 val Equipment.baseLabel: String? get() = baseWeight?.takeIf { it > 0 }?.let {
     "starts at ${weightText(it)} $baseUnit" + if (loadMode == LoadMode.ADDED) " · log plates only" else ""

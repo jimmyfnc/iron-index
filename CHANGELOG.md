@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 - 2026-09-28
+
+- **Picked the wrong machine? Fix it after logging.** In a workout's exercise details, **Choose equipment** now works even after you've checked sets. Your logged sets move to the right machine with the weights you typed, and totals, PRs and history follow that machine. If its starting weight changes what your numbers mean, a note tells you. (Switched machines partway through? Add another entry instead.)
+- **Edit a machine without leaving your workout.** Exercise details has an **Edit** button next to the machine: fix its name, brand, model or gym, or set its starting weight, right there.
+- Fixing a machine's name now shows everywhere it's used, past sessions included. Past sessions still keep the starting weight they were logged with unless you choose otherwise.
+- Training with partners? The details screen says whose logged sets move with the machine, since everyone shares the entry.
+- Choosing a machine can no longer undo a starting weight you edited moments before, and adding a starter exercise no longer resets its machine's starting weight.
+
 ## 0.6.1 - 2026-09-28
 
 - **Switch people from anywhere.** When partners are tracking sets, the You / partner chips stay pinned to the top of the workout as you scroll, so you can hand off between people without scrolling back up.
