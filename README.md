@@ -1,7 +1,7 @@
 # IronIndex
 
 A colorful, standalone Android workout tracker. Built with Kotlin, Jetpack Compose
-and Room. Works offline with no account required. Current version: **0.10.0**.
+and Room. Works offline with no account required. Current version: **0.11.0**.
 
 ## Included
 
@@ -36,6 +36,9 @@ and Room. Works offline with no account required. Current version: **0.10.0**.
 - **Setup line on each exercise**: shows the setup for the person you're logging. Before you
   set it today it shows their last one with its date: tap **Same** to keep it, or tap the line
   to change values or add a setting (added to the machine for next time).
+- **Train → Exercises**: your exercise library with likely duplicates first ("Biceps Curl" and
+  "Biceps curl"). **Merge** moves a custom exercise's sessions and routines onto the one you keep;
+  sets and machines stay as logged. Built-ins can be merged into, not removed.
 - **Train → Partners**: add profiles with an optional goal and notes. **History & stats**
   shows a partner's sessions, records and totals, and links to their Progress charts.
 - **Inside a workout**: adding an exercise fills in each person's sets from last time on that machine
@@ -95,6 +98,9 @@ Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
 [Reordering](docs/screenshots/0.2.0/reorder.png) ·
 [Progress](docs/screenshots/0.2.0/progress.png). These previews use synthetic test data.
 
+0.11.0: [Likely duplicates](docs/screenshots/0.11.0/exercises-duplicates.png) ·
+[Merge](docs/screenshots/0.11.0/merge-confirm.png).
+
 0.10.0: [Prefilled from last time](docs/screenshots/0.10.0/prefilled-from-last-time.png).
 
 0.9.0: [Health Connect card](docs/screenshots/0.9.0/health-connect-card.png) ·
@@ -136,6 +142,7 @@ See
 - `Backup.kt`: backup file format, validation and the import merge rules.
 - `Load.kt`: starting weights, totals, plate math and re-basing typed weights.
 - `Setup.kt`: machine setup settings, per-person values and "last time" lookups.
+- `ExerciseMerge.kt`, `ExercisesUi.kt`: duplicate detection, merging, and the Exercises screen.
 - `FitText.kt`: one-line labels that shrink to fit instead of wrapping on small screens or large text.
 - `HealthSession.kt`, `HealthSync.kt`, `HealthPrivacyActivity.kt`: what is shared with Health Connect, the
   sync (only new/changed sessions; removals), and the explanation Health Connect links to.

@@ -113,6 +113,7 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
                 openSession = { vm.openSession(it, profile.id) },
                 openProgress = { progressPerson = profile.id; progressReturn = profile.id; manager = null; tab = 3 }) { manager = "partners" }
             else if (manager == "backup") BackupScreen(workouts, partners, vm) { manager = null }
+            else if (manager == "exercises") ExerciseManager(exercises, workouts, vm::mergeExercise) { manager = null }
             else if (manager == "equipment") EquipmentManager(equipment, workouts, { vm.saveEquipment(it) }, vm::updateEquipment) { manager = null }
             else if (tab == 3) AnalyticsScreen(workouts, partners, unit, progressPerson) { progressPerson = it }
             else LazyColumn(
@@ -133,12 +134,16 @@ fun IronIndexApp(vm: IronIndexViewModel = viewModel()) {
                 when (tab) {
                     0 -> {
                         item {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                // Three equal buttons: tight padding and one-line labels so "Equipment" never breaks mid-word.
-                                val tight = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-                                OutlinedButton(onClick = { manager = "partners" }, modifier = Modifier.weight(1f).heightIn(min = 48.dp), contentPadding = tight) { FitText("Partners") }
-                                OutlinedButton(onClick = { manager = "equipment" }, modifier = Modifier.weight(1f).heightIn(min = 48.dp), contentPadding = tight) { FitText("Equipment") }
-                                OutlinedButton(onClick = { manager = "backup" }, modifier = Modifier.weight(1f).heightIn(min = 48.dp), contentPadding = tight) { FitText("Backup") }
+                            // Two rows of equal buttons: tight padding and one-line labels so nothing breaks mid-word.
+                            val tight = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf(listOf("Partners" to "partners", "Equipment" to "equipment"), listOf("Exercises" to "exercises", "Backup" to "backup")).forEach { row ->
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        row.forEach { (label, target) ->
+                                            OutlinedButton(onClick = { manager = target }, modifier = Modifier.weight(1f).heightIn(min = 48.dp), contentPadding = tight) { FitText(label) }
+                                        }
+                                    }
+                                }
                             }
                         }
                         item {

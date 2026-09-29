@@ -9,7 +9,6 @@ Effort: 🟢 small (hours) · 🟡 medium (a day or two) · 🔴 large (multi-da
 
 | Idea | Effort | Notes |
 |---|---|---|
-| Merge duplicate custom exercises | 🟡 | Rename-vs-separate shipped in 0.3.3; merging existing duplicates is still manual. |
 | Rest timer after checking a set | 🟡 | Per-exercise default, notification when done. |
 | Coach mode: concurrent workouts per client | 🔴 | Start any routine for a partner without being a participant yourself. See 0.3.0 notes in CHANGELOG. |
 | Richer curated exercise library | 🟡 | More starters with primary/secondary muscles. |

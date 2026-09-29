@@ -25,7 +25,7 @@ It lives independently of Discipline; neither app needs the other installed.
   everyone by default; each person can skip entries or get partner-only exercises.
 - Keep partner goals and notes, and review each partner's sessions, records and progress.
 - Record Left / Right separately for single-arm or single-leg exercises.
-- Capture primary/secondary muscles and targeting notes.
+- Capture primary/secondary muscles and targeting notes; merge duplicate custom exercises.
 - Browse colored muscle tags and filter by broad groups or specific targets. Search
   includes secondary muscles and custom names; Arms includes Biceps and Triceps.
 - Export a complete backup file and import it on any phone (merge by ID, never delete);

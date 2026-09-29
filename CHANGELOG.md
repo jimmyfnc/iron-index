@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.0 - 2026-09-29
+
+- **Merge duplicate exercises.** Train → Exercises lists your library and puts likely duplicates first: names that only differ by capitals, spacing or a plural, like "Biceps Curl" and "Biceps curl". Tap Merge on the one you don't want, pick the one to keep, and every session and routine with it moves over. Sets, machines and setup stay exactly as logged, and each machine still keeps its own history.
+- Built-in exercises can be merged into but not removed. Exercises logged differently (both sides vs one side at a time) can't be merged together.
+- Home's Train buttons are now two rows: Partners, Equipment, Exercises, Backup.
+- Importing an older backup now recognises exercises by the same loose name match, so a merged duplicate doesn't come back from it.
+
 ## 0.10.0 - 2026-09-29
 
 - **Start from last time.** Adding an exercise fills in each person's sets from the last time they did it on that machine, unchecked, so a repeat workout is mostly tapping the checkboxes. Change any number before you check it. If that session was in the other unit or the machine's starting weight changed, the numbers are converted so they mean the same weight. Routines still use their own targets.

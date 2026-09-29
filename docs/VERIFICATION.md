@@ -1,5 +1,13 @@
 # IronIndex verification
 
+## 0.11.0 - 2026-09-29
+
+- assembleDebug, all 93 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 35 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned (the owner's phone was attached but never targeted). The new merge UI test first failed because it tapped list items behind the dialog; it now targets the dialog and passes.
+- Unit coverage (ExerciseMergeTest): name matching (case, spacing, punctuation, plurals incl. "presses", empty names ignored); duplicate groups with built-ins first and sides respected; merge targets same-sides only, likely duplicates first; built-ins and mismatched sides refused; merging rewrites the exercise but keeps sets, machine, setup and each entry's own sides mode, and gives legacy entries a machine snapshot.
+- Connected: from Train → Exercises, merging custom "Biceps Curl" into built-in "Biceps curl" moved a session (40 × 12 on a Matrix machine, machine kept) and a routine, removed the custom exercise from the library, and cleared the duplicates section.
+- Manual emulator run with a seeded backup (custom Biceps Curl and Lat Pulldown beside the built-ins): both pairs were flagged; the picker listed Biceps curl first; the confirmation read "1 session will use Biceps curl…"; afterwards Biceps curl showed 1 session and only the Lat pulldown pair remained.
+- A code review found merged entries taking the target's sides mode (wrong for entries switched before logging), old backups re-adding duplicates through a stricter name match, an empty picker for one-sided exercises, name-key gaps (plurals, empty names) and awkward confirm wording. All fixed with tests.
+
 ## 0.10.0 - 2026-09-29
 
 - assembleDebug, all 86 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 34 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned (the owner's phone was attached but never targeted).

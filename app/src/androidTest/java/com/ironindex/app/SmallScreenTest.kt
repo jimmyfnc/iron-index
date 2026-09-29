@@ -59,7 +59,7 @@ class SmallScreenTest {
             }
         }
         compose.waitUntil(10000) { compose.onAllNodesWithText("Equipment").fetchSemanticsNodes().isNotEmpty() }
-        listOf("Partners", "Equipment", "Backup").forEach { assertOneLine(compose.onNodeWithText(it, useUnmergedTree = true), "Home button $it") }
+        listOf("Partners", "Equipment", "Exercises", "Backup").forEach { assertOneLine(compose.onNodeWithText(it, useUnmergedTree = true), "Home button $it") }
         compose.runOnIdle { vm.opened.value = workout.id }
         compose.waitUntil(10000) { compose.onAllNodesWithText("plates lb").fetchSemanticsNodes().isNotEmpty() }
         assertOneLine(compose.onNodeWithText("plates lb", useUnmergedTree = true), "Set field label plates lb")

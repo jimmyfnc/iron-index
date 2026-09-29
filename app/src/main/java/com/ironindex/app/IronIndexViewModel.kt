@@ -267,6 +267,20 @@ class IronIndexViewModel @JvmOverloads constructor(
         store.edit(workoutId) { w -> w.copy(exercises = w.exercises.map { e -> if (e.id == entryId) e.withSetup(participantId, values) else e }) }
         if (machineId != null && newNames.isNotEmpty()) store.addEquipmentSettings(machineId, newNames)
     }
+    /** Merges a duplicate custom exercise into another; history, routines and the workout in progress follow. */
+    fun mergeExercise(from: Exercise, into: Exercise) = run {
+        mergeProblem(from, into)?.let { throw IllegalArgumentException(it) }
+        val changed = store.mergeExercise(from.id, into)
+        // A session being edited keeps the merge if its edit is discarded.
+        editingOriginal.value?.let { original ->
+            val updated = original.withExerciseMerged(from.id, into)
+            if (updated != original) {
+                editingOriginal.value = updated
+                preferences.edit().putString("editingOriginal", storageJson.encodeToString(Workout.serializer(), updated)).apply()
+            }
+        }
+        notice.value = "Merged ${from.name} into ${into.name} · ${count(changed, "workout")} updated."
+    }
     fun move(workoutId: String, entryId: String, beforeId: String?) = edit(workoutId) { it.moveExercise(entryId, beforeId) }
     override fun onCleared() { super.onCleared(); store.close() }
 }

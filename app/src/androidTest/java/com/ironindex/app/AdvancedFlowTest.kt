@@ -346,4 +346,30 @@ class AdvancedFlowTest {
         compose.waitUntil(10000) { runBlocking { store.workouts.first().single { it.id == workout.id }.exercises.single().sets[1].let { it.complete && it.reps == "6" } } }
         assertFalse(runBlocking { store.workouts.first().single { it.id == workout.id }.exercises.single().sets[0].complete })
     }
+
+    @Test fun mergingADuplicateExerciseMovesSessionsAndRoutines() {
+        val custom = Exercise(id = "custom-curl", name = "Biceps Curl")
+        val machine = Equipment(type = "Bicep Curl", brand = "Matrix")
+        val session = Workout(name = "Arms day", startedAt = 1_000, finishedAt = 2_000, exercises = listOf(WorkoutExercise(exercise = custom,
+            equipmentId = machine.id, equipmentSnapshot = machine, sets = listOf(SetEntry(weight = "40", reps = "12", complete = true)))))
+        val routine = Workout(name = "Arms", isTemplate = true, exercises = listOf(WorkoutExercise(exercise = custom)))
+        runBlocking { store.saveExercise(custom); store.saveEquipment(machine); store.save(session); store.save(routine) }
+        launch(session)
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.onNodeWithText("Exercises").performClick()
+        awaitText("Look like duplicates")
+        compose.onAllNodesWithContentDescription("Merge Biceps Curl into another exercise").onFirst().performClick()
+        awaitText("Merge Biceps Curl into…")
+        compose.waitForIdle() // let the dialog finish opening before tapping inside it
+        compose.onNode(hasText("Biceps curl") and hasClickAction() and hasAnyAncestor(isDialog())).performClick()
+        awaitText("Merge into Biceps curl?")
+        compose.onNode(hasText("Merge") and hasClickAction() and hasAnyAncestor(isDialog())).performClick()
+        compose.waitUntil(10000) { runBlocking { store.workouts.first().all { w -> w.exercises.all { it.exercise.id == "curl" } } } }
+        val after = runBlocking { store.workouts.first() }
+        assertEquals("Biceps curl", after.single { it.id == session.id }.exercises.single().exercise.name)
+        assertEquals("40", after.single { it.id == session.id }.exercises.single().sets.single().weight)
+        assertEquals(machine.id, after.single { it.id == session.id }.exercises.single().equipmentId)
+        compose.waitUntil(10000) { runBlocking { store.exercises.first().none { it.id == custom.id } } }
+        compose.onAllNodesWithText("Look like duplicates").assertCountEquals(0)
+    }
 }

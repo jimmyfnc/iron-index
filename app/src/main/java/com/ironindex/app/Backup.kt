@@ -86,7 +86,8 @@ fun planImport(backup: Backup, existingWorkouts: List<Workout>, existingExercise
     val localEquipment = existingEquipment.associateBy { it.identity }
     val equipmentMap = backup.equipment.filter { it.id !in equipmentIds }
         .mapNotNull { e -> localEquipment[e.identity]?.let { e.id to it } }.toMap()
-    fun exerciseKey(x: Exercise) = x.name.trim().lowercase(java.util.Locale.ROOT) to x.mode
+    // Same matching as the duplicate finder, so an old backup's "Biceps curls" links to a merged "Biceps curl".
+    fun exerciseKey(x: Exercise) = exerciseNameKey(x.name).ifEmpty { x.name.trim().lowercase(java.util.Locale.ROOT) } to x.mode
     val localExercises = existingExercises.associateBy(::exerciseKey)
     val exerciseMap = backup.exercises.filter { it.id !in exerciseIds }
         .mapNotNull { x -> localExercises[exerciseKey(x)]?.let { x.id to it.id } }.toMap()

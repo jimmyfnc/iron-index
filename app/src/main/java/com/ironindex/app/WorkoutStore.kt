@@ -35,6 +35,7 @@ interface WorkoutDao {
     @Upsert suspend fun put(row: WorkoutRow)
     @Upsert suspend fun putExercise(row: ExerciseRow)
     @Query("DELETE FROM workouts WHERE id = :id") suspend fun delete(id: String)
+    @Query("DELETE FROM exercises WHERE id = :id") suspend fun deleteExercise(id: String)
     @Query("SELECT * FROM equipment") fun observeEquipment(): Flow<List<EquipmentRow>>
     @Query("SELECT * FROM equipment") suspend fun allEquipment(): List<EquipmentRow>
     @Query("SELECT * FROM partners") fun observePartners(): Flow<List<PartnerRow>>
@@ -131,6 +132,24 @@ class WorkoutStore(context: Context, databaseName: String = "iron-index.db") {
         workout.id
     }
     suspend fun saveExercise(exercise: Exercise) = dao.putExercise(ExerciseRow(exercise.id, json.encodeToString(exercise)))
+
+    /**
+     * Folds a duplicate custom exercise into [into] everywhere (sessions, routines, the workout in progress)
+     * and removes it from the library, in one transaction. Rewritten workouts get a fresh updatedAt so an
+     * older backup can't bring the duplicate back into them. Returns how many workouts changed.
+     */
+    suspend fun mergeExercise(fromId: String, into: Exercise): Int = mutex.withLock {
+        val now = System.currentTimeMillis()
+        var changed = 0
+        db.withTransaction {
+            dao.all().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Workout>(it) }.forEach { w ->
+                val merged = w.withExerciseMerged(fromId, into)
+                if (merged != w) { write(merged.copy(updatedAt = now)); changed++ }
+            }
+            dao.deleteExercise(fromId)
+        }
+        changed
+    }
     suspend fun saveEquipment(value: Equipment): Equipment = mutex.withLock { putEquipment(value) }
 
     /**
