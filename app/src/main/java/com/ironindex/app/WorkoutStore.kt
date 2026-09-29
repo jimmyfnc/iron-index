@@ -149,7 +149,8 @@ class WorkoutStore(context: Context, databaseName: String = "iron-index.db") {
         require(existing == null || all.none { it.id == value.id }) { "Another machine already has this type, brand, model and gym." }
         // Re-adding a machine that already exists reuses it, taking any starting weight given this time.
         val saved = existing?.let { e -> e.copy(archived = false, baseWeight = value.baseWeight ?: e.baseWeight,
-            baseUnit = if (value.baseWeight != null) value.baseUnit else e.baseUnit, loadMode = if (value.baseWeight != null) value.loadMode else e.loadMode) } ?: value
+            baseUnit = if (value.baseWeight != null) value.baseUnit else e.baseUnit, loadMode = if (value.baseWeight != null) value.loadMode else e.loadMode,
+            settings = cleanSettingNames(e.settings + value.settings)) } ?: value
         dao.putEquipment(EquipmentRow(saved.id, json.encodeToString(saved)))
         return saved
     }
@@ -170,6 +171,12 @@ class WorkoutStore(context: Context, databaseName: String = "iron-index.db") {
             }
         }
         saved
+    }
+    /** Adds setting names to a catalog machine, read under the lock so a concurrent edit isn't lost. */
+    suspend fun addEquipmentSettings(id: String, names: List<String>) = mutex.withLock {
+        val current = dao.allEquipment().map { it.payload }.decodeEach(::logUnreadable) { json.decodeFromString<Equipment>(it) }.find { it.id == id } ?: return@withLock
+        val updated = current.copy(settings = cleanSettingNames(current.settings + names))
+        if (updated != current) dao.putEquipment(EquipmentRow(id, json.encodeToString(updated)))
     }
     private class Snapshot(val workouts: List<Workout>, val exercises: List<Exercise>, val equipment: List<Equipment>, val partners: List<Partner>) {
         fun plan(backup: Backup) = planImport(backup, workouts, exercises, equipment, partners)

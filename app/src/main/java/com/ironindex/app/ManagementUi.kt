@@ -167,6 +167,7 @@ fun EquipmentManager(equipment: List<Equipment>, workouts: List<Workout>, save: 
                     Text(e.type.ifBlank { "Equipment" }, fontSize = 21.sp, fontWeight = FontWeight.Bold)
                     Text(listOf(e.brand, e.model, e.location).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Generic equipment" })
                     e.baseLabel?.let { Text(it.replaceFirstChar { c -> c.uppercase() }, color = Lime, fontSize = 13.sp) }
+                    if (e.settings.isNotEmpty()) Text("Setup · ${e.settings.joinToString(" · ")}", color = Lavender, fontSize = 13.sp)
                     Row {
                         TextButton(onClick = { editingId = e.id }) { Text("Edit") }
                         TextButton(onClick = { update(e.copy(archived = !e.archived), false) }) { Text(if (e.archived) "Restore" else "Archive") }
@@ -228,9 +229,14 @@ fun EquipmentEditor(initial: Equipment?, dismiss: () -> Unit, validate: (Equipme
     var mode by rememberSaveable(key) { mutableStateOf(initial?.takeIf { it.baseWeight != null }?.loadMode?.name) }
     val effectiveMode = mode?.let(LoadMode::valueOf) ?: suggestedLoadMode(type)
     val baseValue = base.toWeightOrNull()?.takeIf { it > 0 }
+    // One name per line, so the list is saveable across rotation.
+    var settingsText by rememberSaveable(key) { mutableStateOf(initial?.settings?.joinToString("\n").orEmpty()) }
+    val settings = cleanSettingNames(settingsText.lines())
+    var newSetting by rememberSaveable(key) { mutableStateOf("") }
+    fun addSetting(name: String) { settingsText = cleanSettingNames(settings + name).joinToString("\n") }
     val template = remember(key) { initial ?: Equipment(type = "") }
     val result = template.copy(type = type.trim(), brand = brand.trim(), model = model.trim(), location = location.trim(),
-        baseWeight = baseValue, baseUnit = baseUnit, loadMode = if (baseValue == null) LoadMode.TOTAL else effectiveMode)
+        baseWeight = baseValue, baseUnit = baseUnit, loadMode = if (baseValue == null) LoadMode.TOTAL else effectiveMode, settings = settings)
     val problem = validate(result)
     AlertDialog(onDismissRequest = dismiss, title = { Text(if (initial == null) "Add equipment" else "Edit equipment") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()).imePadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -260,6 +266,25 @@ fun EquipmentEditor(initial: Equipment?, dismiss: () -> Unit, validate: (Equipme
                         RadioButton(effectiveMode == value, onClick = null); Spacer(Modifier.width(8.dp)); Text(label)
                     }
                 }
+            }
+            Text("Setup settings", fontWeight = FontWeight.Bold)
+            Text("What you set each time, such as seat height or the cable attachment. Each person's values show on the exercise while they log.", style = MaterialTheme.typography.bodySmall, color = Muted)
+            if (settings.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                settings.forEach { name ->
+                    InputChip(selected = true, onClick = { settingsText = settings.filterNot { it == name }.joinToString("\n") }, label = { Text(name) },
+                        trailingIcon = { Icon(Icons.Rounded.Close, null, Modifier.size(16.dp)) }, modifier = Modifier.semantics { contentDescription = "Remove setting $name" })
+                }
+            }
+            val offered = suggestedSettings(type).filter { s -> settings.none { it.equals(s, ignoreCase = true) } }
+            if (offered.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                offered.forEach { s -> AssistChip(onClick = { addSetting(s) }, label = { Text(s) }, leadingIcon = { Icon(Icons.Rounded.Add, null) },
+                    modifier = Modifier.semantics { contentDescription = "Add setting $s" }) }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(newSetting, { newSetting = it }, label = { Text("Add a setting") }, placeholder = { Text("Seat height, pin, handle") }, singleLine = true, modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { addSetting(newSetting); newSetting = "" }))
+                IconButton(onClick = { addSetting(newSetting); newSetting = "" }, enabled = newSetting.isNotBlank()) { Icon(Icons.Rounded.Add, "Add this setting") }
             }
         }
     }, confirmButton = { TextButton(enabled = type.isNotBlank() && (base.isBlank() || baseValue != null) && problem == null, onClick = { save(result) }) { Text("Save equipment") } },

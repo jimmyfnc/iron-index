@@ -37,6 +37,8 @@ data class Equipment(
     val baseWeight: Double? = null,
     val baseUnit: String = "lb",
     val loadMode: LoadMode = LoadMode.TOTAL,
+    /** Settings to record each time it's used, such as "Seat height" or "Attachment". */
+    val settings: List<String> = emptyList(),
 ) {
     val label get() = listOf(type, brand, model, location).filter { it.isNotBlank() }.joinToString(" · ")
     val identity get() = listOf(type, brand, model, location).joinToString("|") { it.trim().lowercase(java.util.Locale.ROOT) }
@@ -83,6 +85,8 @@ data class WorkoutExercise(
     val equipmentSnapshot: Equipment? = null,
     /** People not doing this entry. You are [SELF_PARTICIPANT]; partners use their profile id. */
     val skippedBy: List<String> = emptyList(),
+    /** Each person's machine setup for this entry (seat height, attachment…). */
+    val setup: List<SetupValue> = emptyList(),
 )
 
 const val SELF_PARTICIPANT = "self"
@@ -154,7 +158,7 @@ fun Workout.attachPartner(partner: Partner, track: Boolean): Workout {
 fun Workout.detachPartner(partnerId: String): Workout {
     require(!hasInputFor(partnerId)) { "Remove this partner’s entered sets before detaching them." }
     val remaining = copy(partners = partners.filterNot { it.id == partnerId }, exercises = exercises.map { e ->
-        e.copy(sets = e.sets.filterNot { it.participantId == partnerId }, skippedBy = e.skippedBy - partnerId)
+        e.copy(sets = e.sets.filterNot { it.participantId == partnerId }, skippedBy = e.skippedBy - partnerId, setup = e.setup.filterNot { it.participantId == partnerId })
     })
     val people = listOf<String?>(null) + remaining.partners.map { it.id }
     return remaining.copy(exercises = remaining.exercises.filter { e -> e.sets.isNotEmpty() || people.any { e.includes(it) } })
@@ -205,7 +209,8 @@ data class Workout(
         // Partners choose whether to join each session; don't carry their attendance, sets or partner-only exercises.
         exercises = exercises.filter { it.includes(null) }.map { e ->
             val groupIds = mutableMapOf<String, String>()
-            e.copy(id = newId(), skippedBy = emptyList(), sets = e.sets.filter { it.participantId == null }.map {
+            // Setup is per session; the next one shows what was recorded last time instead.
+            e.copy(id = newId(), skippedBy = emptyList(), setup = emptyList(), sets = e.sets.filter { it.participantId == null }.map {
                 it.copy(id = newId(), groupId = groupIds.getOrPut(it.groupId) { newId() }, complete = false)
             })
         },

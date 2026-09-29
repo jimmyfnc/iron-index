@@ -45,7 +45,7 @@ fun WorkoutExercise.rebasedTo(current: Equipment, unit: String): WorkoutExercise
     })
 }
 
-/** This snapshot relabelled with [current]'s name, keeping the load settings its sets were logged with. */
+/** This snapshot relabelled with [current]'s name, keeping the load settings its sets were logged with. (Setting names are read from the catalog.) */
 fun Equipment.renamedLike(current: Equipment): Equipment = copy(type = current.type, brand = current.brand, model = current.model, location = current.location)
 
 /**

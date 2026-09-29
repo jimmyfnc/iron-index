@@ -215,6 +215,11 @@ class IronIndexViewModel @JvmOverloads constructor(application: Application, pri
         store.saveExercise(normalized)
         if (retotalled) notice.value = "Weights kept as typed. Totals now use this machine’s starting weight."
     }
+    /** Records one person's machine setup on an entry; names new to the machine are added to its settings for next time. */
+    fun saveSetup(workoutId: String, entryId: String, participantId: String?, values: Map<String, String>, machineId: String?, newNames: List<String>) = run {
+        store.edit(workoutId) { w -> w.copy(exercises = w.exercises.map { e -> if (e.id == entryId) e.withSetup(participantId, values) else e }) }
+        if (machineId != null && newNames.isNotEmpty()) store.addEquipmentSettings(machineId, newNames)
+    }
     fun move(workoutId: String, entryId: String, beforeId: String?) = edit(workoutId) { it.moveExercise(entryId, beforeId) }
     override fun onCleared() { super.onCleared(); store.close() }
 }

@@ -67,8 +67,8 @@ class AdvancedFlowTest {
         compose.onNodeWithContentDescription("Complete set 1 Left").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Complete set 1 Right").performScrollTo().assertIsOff()
         androidx.test.espresso.Espresso.closeSoftKeyboard()
-        compose.onNodeWithText("Unilateral test").performScrollTo()
-        compose.onNodeWithText("You").performClick()
+        // The person chips stay pinned, so no scrolling back up.
+        compose.onNodeWithText("You").assertIsDisplayed().performClick()
         compose.onNodeWithText("You").assertIsSelected()
         compose.onNodeWithContentDescription("Complete set 1 Left").performScrollTo().assertIsOff()
         compose.onAllNodesWithText("20").assertCountEquals(0)
@@ -285,5 +285,34 @@ class AdvancedFlowTest {
         compose.onNodeWithText("Cancel").performClick()
         awaitText("Chest press · Life Fitness · Insignia")
         assertEquals("Insignia", runBlocking { store.equipment.first().single { it.id == lifeFitness.id }.model })
+    }
+
+    @Test fun machineSetupCarriesFromLastTimeAndStaysPerPerson() {
+        val alex = Partner(name = "Alex")
+        val cable = Equipment(type = "Cable machine", brand = "Matrix", settings = listOf("Attachment"))
+        val pushdown = Exercise(name = "Triceps pushdown")
+        val past = Workout(name = "Old arms", startedAt = 1_000, finishedAt = 2_000, exercises = listOf(WorkoutExercise(exercise = pushdown, equipmentId = cable.id,
+            equipmentSnapshot = cable, setup = listOf(SetupValue(null, "Attachment", "Rope")), sets = listOf(SetEntry(weight = "50", reps = "12", complete = true)))))
+        val pair = Workout(name = "Arms today", partners = listOf(WorkoutPartner(alex.id, alex.name, true)))
+        val workout = pair.copy(exercises = listOf(pair.newEntry(pushdown, cable)))
+        runBlocking { store.saveEquipment(cable); store.savePartner(alex); store.save(past); store.save(workout) }
+        fun today() = runBlocking { store.workouts.first().single { it.id == workout.id }.exercises.single() }
+        launch(workout)
+        awaitText("Setup · last time ${dateLabel(1_000)}")
+        compose.onNodeWithText("Attachment Rope").assertExists()
+        compose.onNodeWithContentDescription("Use the same setup as last time for you").performClick()
+        compose.waitUntil(10000) { today().setupFor(null) == mapOf("Attachment" to "Rope") }
+        compose.onNodeWithContentDescription("Setup for Triceps pushdown, you: Attachment Rope").performClick()
+        awaitText("Setup · Triceps pushdown")
+        compose.onNodeWithContentDescription("Attachment: V-bar").performClick()
+        compose.onNodeWithContentDescription("Add setting Pulley height").performClick()
+        compose.onNode(hasText("Pulley height") and hasSetTextAction()).performTextInput("12")
+        compose.onNodeWithText("Save setup").performClick()
+        compose.waitUntil(10000) { today().setupFor(null) == mapOf("Attachment" to "V-bar", "Pulley height" to "12") }
+        compose.waitUntil(10000) { runBlocking { store.equipment.first().single { it.id == cable.id }.settings } == listOf("Attachment", "Pulley height") }
+        awaitText("Attachment V-bar · Pulley height 12")
+        compose.onNodeWithText("Alex").performClick()
+        awaitText("Add attachment, pulley height")
+        assertTrue(today().setupFor(alex.id).isEmpty())
     }
 }

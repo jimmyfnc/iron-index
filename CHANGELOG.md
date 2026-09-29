@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0 - 2026-09-28
+
+- **Machine setup, remembered.** Give a machine its settings, such as **Seat height** on a chest press or **Attachment** and **Pulley height** on a cable stack (suggested from the machine type), in Train → Equipment, or add one straight from a workout.
+- Each exercise card shows a **Setup** line for whoever you're logging. If you haven't set it yet today, it shows what that person used last time on this machine for this exercise, with the date. Tap **Same** to keep it, or tap the line to change it. Past values and common attachments (rope, V-bar, straight bar…) are one tap away.
+- Everyone keeps their own setup: Alex's seat height never overwrites yours. Setup is saved with each session, shows in History, and travels in backups.
+
 ## 0.7.0 - 2026-09-28
 
 - **Picked the wrong machine? Fix it after logging.** In a workout's exercise details, **Choose equipment** now works even after you've checked sets. Your logged sets move to the right machine with the weights you typed, and totals, PRs and history follow that machine. If its starting weight changes what your numbers mean, a note tells you. (Switched machines partway through? Add another entry instead.)

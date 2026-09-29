@@ -13,7 +13,9 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -108,7 +110,8 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
                     details = { exercise, profile -> vm.editDetails(workout.id, entry.id, exercise, profile) },
                     remove = { vm.edit(workout.id) { w -> w.copy(exercises = w.exercises.filterNot { it.id == entry.id }) } },
                     skip = if (tracked.isEmpty()) null else ({ vm.skipExercise(workout.id, entry.id, participantId) }), personName = personName,
-                    editEquipment = vm::updateEquipment, equipmentUses = { id -> equipmentUses(vm.workouts.value, id) })
+                    editEquipment = vm::updateEquipment, equipmentUses = { id -> equipmentUses(vm.workouts.value, id) },
+                    saveSetup = { values, newNames -> vm.saveSetup(workout.id, entry.id, participantId, values, entry.equipmentKey(), newNames) })
             }
         }
         if (!readOnly) item {
@@ -148,7 +151,8 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
 private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, readOnly: Boolean, participantId: String?, previous: List<LoggedSet>, earlier: List<LoggedSet>, equipment: List<Equipment>,
                          update: ((WorkoutExercise) -> WorkoutExercise) -> Unit, details: (Exercise, Equipment?) -> Unit, remove: () -> Unit,
                          skip: (() -> Unit)? = null, personName: String? = null,
-                         editEquipment: ((Equipment, Boolean) -> Unit)? = null, equipmentUses: (String) -> Int = { 0 }) {
+                         editEquipment: ((Equipment, Boolean) -> Unit)? = null, equipmentUses: (String) -> Int = { 0 },
+                         saveSetup: (Map<String, String>, List<String>) -> Unit = { _, _ -> }) {
     var editing by rememberSaveable { mutableStateOf(false) }
     var removing by rememberSaveable { mutableStateOf(false) }
     val who = personName ?: "you"
@@ -187,6 +191,7 @@ private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, readOnly: Boo
                     }
                 }
             }
+            if (!workout.isTemplate) SetupLine(entry, participantId, earlier, equipment, readOnly, who, saveSetup)
             val plateOnly = entry.equipmentProfile()?.takeIf { it.baseIn(workout.unit) != null && it.loadMode == LoadMode.ADDED }
             val perSide = if (entry.exercise.mode != ExerciseMode.BILATERAL) "Per side · " else ""
             if (!readOnly) Text(when {
@@ -228,6 +233,104 @@ private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, readOnly: Boo
         editEquipment = editEquipment, equipmentUses = equipmentUses, dismiss = { editing = false }) { exercise, profile -> details(exercise, profile); editing = false }
     if (removing) ConfirmDialog("Remove ${entry.exercise.name}?", "This removes its sets for you and all partners from this workout.", "Remove", { removing = false }) { remove(); removing = false }
     if (showHistory) ExerciseHistoryDialog(earlier) { showHistory = false }
+}
+
+/**
+ * One person's machine setup for this entry: what's recorded today, otherwise what they recorded last time
+ * (with a one-tap "Same"), otherwise a prompt to add the machine's settings. Hidden for machines with nothing to set.
+ */
+@Composable
+private fun SetupLine(entry: WorkoutExercise, participantId: String?, earlier: List<LoggedSet>, catalog: List<Equipment>, readOnly: Boolean, who: String,
+                      save: (Map<String, String>, List<String>) -> Unit) {
+    val cataloged = catalog.find { it.id == entry.equipmentKey() }
+    val machine = cataloged ?: entry.equipmentProfile() ?: return
+    val recorded = entry.setupFor(participantId)
+    val lastRecorded = remember(earlier, participantId) { lastSetup(earlier, participantId) }
+    val names = settingNames(machine, recorded, lastRecorded?.second.orEmpty())
+    // Keyed to the machine's spelling so a value recorded as "attachment" still shows (and isn't erased) under "Attachment".
+    val current = recorded.keyedBy(names)
+    val last = lastRecorded?.let { (date, values) -> date to values.keyedBy(names) }
+    val suggestions = suggestedSettings(machine.type).filter { s -> names.none { it.equals(s, ignoreCase = true) } }
+    if ((readOnly && current.isEmpty()) || (names.isEmpty() && suggestions.isEmpty())) return
+    var editing by rememberSaveable(entry.id, participantId) { mutableStateOf(false) }
+    val summary = when {
+        current.isNotEmpty() -> setupLabel(names, current)
+        last != null -> setupLabel(names, last.second)
+        names.isNotEmpty() -> "Add ${names.joinToString(", ").lowercase()}"
+        else -> "Add ${suggestions.joinToString(", ").lowercase()}"
+    }
+    val description = "Setup for ${entry.exercise.name}, $who: $summary${if (last != null && current.isEmpty()) ", last time" else ""}"
+    // Read-only sessions show a plain row, not a disabled button.
+    val row = Modifier.fillMaxWidth().semantics { contentDescription = description }
+    if (readOnly) Surface(color = Ink, shape = RoundedCornerShape(14.dp), modifier = row) { SetupRowContent(current, last, summary, false, who, save) }
+    else Surface(onClick = { editing = true }, color = Ink, shape = RoundedCornerShape(14.dp), modifier = row) { SetupRowContent(current, last, summary, true, who, save) }
+    if (editing) {
+        // Values this person has used before for each setting, newest first, offered as one-tap chips.
+        val used = remember(earlier, participantId, names) {
+            earlier.distinctBy { it.entry.id }.asReversed().flatMap { it.entry.setupFor(participantId).keyedBy(names).entries }.groupBy({ it.key }, { it.value }).mapValues { it.value.distinct() }
+        }
+        SetupDialog(entry.exercise.name, who, names, suggestions, current.ifEmpty { last?.second.orEmpty() }, used, canAddToMachine = cataloged != null, { editing = false }) { values, added ->
+            save(values, added.filter { f -> machine.settings.none { it.equals(f, ignoreCase = true) } })
+            editing = false
+        }
+    }
+}
+
+@Composable
+private fun SetupRowContent(current: Map<String, String>, last: Pair<Long, Map<String, String>>?, summary: String, editable: Boolean, who: String,
+                            save: (Map<String, String>, List<String>) -> Unit) {
+    Row(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f).padding(vertical = 4.dp)) {
+            Text(if (current.isEmpty() && last != null) "Setup · last time ${dateLabel(last.first)}" else "Setup", color = Lavender, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(summary, color = if (current.isNotEmpty()) MaterialTheme.colorScheme.onSurface else Muted, fontSize = 14.sp)
+        }
+        if (editable && current.isEmpty() && last != null) TextButton(onClick = { save(last.second, emptyList()) },
+            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Use the same setup as last time for $who" }) { Text("Same") }
+        if (editable) Icon(Icons.Rounded.Edit, null, tint = Muted, modifier = Modifier.padding(12.dp).size(18.dp))
+    }
+}
+
+@Composable
+private fun SetupDialog(exerciseName: String, who: String, names: List<String>, suggestions: List<String>, initial: Map<String, String>,
+                        used: Map<String, List<String>>, canAddToMachine: Boolean, dismiss: () -> Unit,
+                        /** Values for every field, and the setting names added here that were given a value. */
+                        save: (Map<String, String>, List<String>) -> Unit) {
+    // Saveable so typing survives rotation.
+    val fields = rememberSaveable(saver = listSaver(save = { it.toList() }, restore = { it.toMutableStateList() })) { names.toMutableStateList() }
+    val values = rememberSaveable(saver = listSaver<SnapshotStateMap<String, String>, String>(save = { m -> m.flatMap { listOf(it.key, it.value) } },
+        restore = { l -> mutableStateMapOf<String, String>().apply { l.chunked(2).forEach { (k, v) -> put(k, v) } } })) { mutableStateMapOf<String, String>().apply { putAll(initial) } }
+    var newName by rememberSaveable { mutableStateOf("") }
+    fun addField(name: String) { name.trim().takeIf { n -> n.isNotBlank() && fields.none { it.equals(n, ignoreCase = true) } }?.let { fields.add(it) } }
+    AlertDialog(onDismissRequest = dismiss, title = { Text("Setup · $exerciseName") }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()).imePadding(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("For $who, saved with this workout. Leave a setting blank to skip it.", color = Muted, fontSize = 13.sp)
+            fields.forEach { name ->
+                OutlinedTextField(values[name].orEmpty(), { values[name] = it }, label = { Text(name) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Next))
+                val chips = (used[name].orEmpty() + if (name.contains("attach", ignoreCase = true)) commonAttachments else emptyList())
+                    .distinctBy { it.lowercase() }.filterNot { it.equals(values[name].orEmpty().trim(), ignoreCase = true) }.take(8)
+                if (chips.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    chips.forEach { value -> SuggestionChip(onClick = { values[name] = value }, label = { Text(value) },
+                        modifier = Modifier.semantics { contentDescription = "$name: $value" }) }
+                }
+            }
+            val offered = suggestions.filter { s -> fields.none { it.equals(s, ignoreCase = true) } }
+            if (offered.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                offered.forEach { s -> AssistChip(onClick = { addField(s) }, label = { Text(s) }, leadingIcon = { Icon(Icons.Rounded.Add, null) },
+                    modifier = Modifier.semantics { contentDescription = "Add setting $s" }) }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(newName, { newName = it }, label = { Text("Add a setting") }, placeholder = { Text("Seat height, pin, handle") }, singleLine = true, modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { addField(newName); newName = "" }))
+                IconButton(onClick = { addField(newName); newName = "" }, enabled = newName.isNotBlank()) { Icon(Icons.Rounded.Add, "Add this setting") }
+            }
+            if (canAddToMachine) Text("Settings you add and fill in are saved to this machine for next time.", color = Muted, fontSize = 12.sp)
+        }
+    }, confirmButton = { TextButton(onClick = {
+        save(fields.associateWith { values[it].orEmpty() }, fields.filter { f -> names.none { it.equals(f, ignoreCase = true) } && values[f].orEmpty().isNotBlank() })
+    }) { Text("Save setup") } },
+        dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } })
 }
 
 /** Checked sets per person, "you: 2, Alex: 3", or null when none are checked. */

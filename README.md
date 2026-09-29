@@ -1,7 +1,7 @@
 # IronIndex
 
 A colorful, standalone Android workout tracker. Built with Kotlin, Jetpack Compose
-and Room. Works offline with no account required. Current version: **0.7.0**.
+and Room. Works offline with no account required. Current version: **0.8.0**.
 
 ## Included
 
@@ -13,6 +13,7 @@ and Room. Works offline with no account required. Current version: **0.7.0**.
 - Dark ink, lime, lavender and coral interface.
 - Drag-and-drop exercise ordering via Reorder, with accessible up/down alternatives.
 - Equipment library: separate brand, model, optional gym/nickname, and a starting weight (bar, sled) with plate math or plates-only logging.
+- Machine setup: named settings (seat height, cable attachment…) recorded per person on each exercise, prefilled from last time.
 - Partner Manager with goals, notes, history and stats; independent sets and per-person exercise lists.
 - Single-arm/single-leg logging with independent Left / Right values.
 - Primary/secondary muscles and isolation notes; inline previous-session references.
@@ -28,6 +29,11 @@ and Room. Works offline with no account required. Current version: **0.7.0**.
   how you log it: **Total weight** (type 225; the set shows "45 bar + 90 per side") or
   **Plates only** (type 180; it shows "+167 sled = 347 lb total"). Charts, PRs and volume
   always use totals. Changing it on a machine you've used asks how past weights were typed.
+  **Setup settings** lists what you adjust each time (Seat height, Attachment, Pulley height);
+  suggestions follow the machine type.
+- **Setup line on each exercise**: shows the setup for the person you're logging. Before you
+  set it today it shows their last one with its date: tap **Same** to keep it, or tap the line
+  to change values or add a setting (added to the machine for next time).
 - **Train → Partners**: add profiles with an optional goal and notes. **History & stats**
   shows a partner's sessions, records and totals, and links to their Progress charts.
 - **Inside a workout**: **Partners** attaches people and optionally enables their sets;
@@ -82,6 +88,9 @@ Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
 [Reordering](docs/screenshots/0.2.0/reorder.png) ·
 [Progress](docs/screenshots/0.2.0/progress.png). These previews use synthetic test data.
 
+0.8.0: [Last time's setup](docs/screenshots/0.8.0/last-time-setup.png) ·
+[Setup form](docs/screenshots/0.8.0/setup-form.png) · [Machine settings](docs/screenshots/0.8.0/machine-settings.png).
+
 0.7.0: [Fix the machine](docs/screenshots/0.7.0/fix-machine.png) ·
 [Moved sets](docs/screenshots/0.7.0/moved-sets.png) · [Edit the machine](docs/screenshots/0.7.0/edit-machine.png).
 
@@ -110,6 +119,7 @@ See
 - `Analytics.kt`, `AnalyticsUi.kt`: metric definitions and progress screens.
 - `Backup.kt`: backup file format, validation and the import merge rules.
 - `Load.kt`: starting weights, totals, plate math and re-basing typed weights.
+- `Setup.kt`: machine setup settings, per-person values and "last time" lookups.
 - `app/schemas`: Room schema history; commit schema changes with migrations.
 - `.githooks/`, `scripts/install-hooks.sh`: release hygiene and doc-drift checks.
 - `docs/ROADMAP.md`, `docs/brainstorms/`, `docs/archive/`: backlog, live and shipped designs.

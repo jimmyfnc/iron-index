@@ -1,5 +1,14 @@
 # IronIndex verification
 
+## 0.8.0 - 2026-09-28
+
+- assembleDebug, all 70 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 31 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned (no phone attached). The first full run had one failure: an older partner test scrolled back to the title to reach the You chip, which failed once the taller card pushed it away; the chips are pinned since 0.6.1, so the step now taps them directly.
+- Unit coverage (SetupTest): each person keeps their own values and blanks are dropped; last setup is that person's most recent recorded one; machine setting order with recorded extras; values recorded under another capitalization still show; re-saving unchanged setup leaves the entry untouched; type suggestions (cable, seated, leg press; none for dumbbells, barbell, Smith, T-bar); routines/repeats clear setup; detaching a partner removes theirs; older saved rows decode with no setup.
+- Connected coverage: a card shows "Setup · last time" from a finished session, Same records it, the form switches Rope → V-bar via a chip and adds Pulley height 12, which is saved on the entry and added to the machine; Alex's setup stays empty.
+- No Room schema change: setup and settings live in the existing JSON payloads (defaults keep older rows and backups readable).
+- Manual emulator run: imported a seeded backup with last week's lat pulldown (you: Wide bar, Alex: V-bar). Each person saw their own "last time" setup; changed yours to Rope + Pulley height 12 in the form; Same for Alex kept V-bar; the Equipment screen then listed "Setup · Attachment · Pulley height", and its editor shows the settings chips.
+- A code review found values hidden (and erased on save) when a setting's capitalization differed, removed settings coming back from a save, snapshot rewrites for name-only setting edits, a false "edited" stamp on re-saving the same setup, a promise to save settings to a machine not in the catalog, Seat height suggested for Smith/T-bar, a disabled-button announcement on read-only rows and no keyboard action to add a setting. All fixed with tests before release.
+
 ## 0.7.0 - 2026-09-28
 
 - assembleDebug, all 62 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 30 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned (no phone attached).
