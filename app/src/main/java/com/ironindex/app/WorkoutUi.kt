@@ -74,17 +74,24 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
                 listOf("lb", "kg").forEach { value -> FilterChip(workout.unit == value, { vm.edit(workout.id) { it.copy(unit = value) } }, label = { Text(value) },
                     modifier = Modifier.semantics { contentDescription = "Use $value for this workout" }) }
             }
-            if (workout.partners.isNotEmpty()) {
-                Text("Training with ${workout.partners.joinToString { it.name }}", color = Lavender)
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(athlete.isEmpty(), { athlete = "" }, label = { Text("You") })
-                    tracked.forEach { p -> FilterChip(athlete == p.id, { athlete = p.id }, label = { Text(p.name) }) }
+            if (workout.partners.isNotEmpty()) Text("Training with ${workout.partners.joinToString { it.name }}", color = Lavender)
+        }
+        // Stays pinned to the top while scrolling so switching people never means scrolling back up.
+        if (tracked.isNotEmpty()) stickyHeader(key = "people") {
+            Surface(color = Ink, modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Logging", color = Muted, fontSize = 12.sp)
+                    FilterChip(athlete.isEmpty(), { athlete = "" }, label = { Text("You") }, modifier = Modifier.heightIn(min = 48.dp))
+                    tracked.forEach { p -> FilterChip(athlete == p.id, { athlete = p.id }, label = { Text(p.name) }, modifier = Modifier.heightIn(min = 48.dp)) }
                 }
-                if (athleteProfile != null && (athleteProfile.goal.isNotBlank() || athleteProfile.notes.isNotBlank())) Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        if (athleteProfile.goal.isNotBlank()) Text("Goal · ${athleteProfile.goal}", color = Lime, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        if (athleteProfile.notes.isNotBlank()) Text(athleteProfile.notes, color = Muted, fontSize = 13.sp)
-                    }
+            }
+        }
+        if (athleteProfile != null && (athleteProfile.goal.isNotBlank() || athleteProfile.notes.isNotBlank())) item(key = "person-notes") {
+            Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (athleteProfile.goal.isNotBlank()) Text("Goal · ${athleteProfile.goal}", color = Lime, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    if (athleteProfile.notes.isNotBlank()) Text(athleteProfile.notes, color = Muted, fontSize = 13.sp)
                 }
             }
         }

@@ -1,7 +1,7 @@
 # IronIndex
 
 A colorful, standalone Android workout tracker. Built with Kotlin, Jetpack Compose
-and Room. Works offline with no account required. Current version: **0.6.0**.
+and Room. Works offline with no account required. Current version: **0.6.1**.
 
 ## Included
 
@@ -31,9 +31,9 @@ and Room. Works offline with no account required. Current version: **0.6.0**.
 - **Train → Partners**: add profiles with an optional goal and notes. **History & stats**
   shows a partner's sessions, records and totals, and links to their Progress charts.
 - **Inside a workout**: **Partners** attaches people and optionally enables their sets;
-  person chips switch logging. New exercises mirror to everyone. **Skip for …** hides an
-  exercise for one person (Add brings it back with their targets). Adding an exercise
-  while a partner chip is selected adds it only for them.
+  person chips switch logging and stay pinned at the top while you scroll. New exercises
+  mirror to everyone. **Skip for …** hides an exercise for one person (Add brings it back
+  with their targets). Adding an exercise while a partner chip is selected adds it only for them.
 - **Exercise details button**: select equipment, muscles and side mode. Change side mode
   before entering values. Renaming asks whether it's the same exercise (one history) or
   a different one (its own history). To switch machines after completing sets, add another entry.
@@ -78,6 +78,8 @@ Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
 0.2.0: [Partner + Left/Right logging](docs/screenshots/0.2.0/logging.png) ·
 [Reordering](docs/screenshots/0.2.0/reorder.png) ·
 [Progress](docs/screenshots/0.2.0/progress.png). These previews use synthetic test data.
+
+0.6.1: [Pinned person chips](docs/screenshots/0.6.1/pinned-people.png).
 
 0.6.0: [Starting weight](docs/screenshots/0.6.0/starting-weight.png) ·
 [Plate math](docs/screenshots/0.6.0/plate-math.png) ·

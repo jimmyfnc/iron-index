@@ -1,5 +1,11 @@
 # IronIndex verification
 
+## 0.6.1 - 2026-09-28
+
+- assembleDebug, all 60 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 25 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned (no phone attached). The first full connected run had one timing failure in the existing plates-only logging test (a checkbox tapped before its value landed); it passed on a class rerun and in a second full run.
+- New connected test: in a ten-exercise workout with a tracked partner, scrolled to the bottom, the You / Alex chips are still displayed and switching shows that person's cards in place.
+- Manual emulator run: imported a seeded backup through the file picker, scrolled a long pair workout; the "Logging · You · Alex" bar stayed pinned under the status bar, tapping Alex switched every card without moving the scroll position, and the bar stayed visible with the number keyboard open while typing.
+
 ## 0.6.0 - 2026-09-24
 
 - assembleDebug, all 60 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 24 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned. The phone was separately upgraded to the finished 0.5.0 build from a clean v0.5.0 worktree at the owner's request; no tests ran on it.

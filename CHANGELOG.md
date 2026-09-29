@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1 - 2026-09-28
+
+- **Switch people from anywhere.** When partners are tracking sets, the You / partner chips stay pinned to the top of the workout as you scroll, so you can hand off between people without scrolling back up.
+
 ## 0.6.0 - 2026-09-24
 
 - **Starting weights on equipment.** Give a bar, sled or carriage its starting weight (quick picks: 45, 55, 35, 25 lb; 20, 15 kg). Equipment can now be edited, not just added or archived.

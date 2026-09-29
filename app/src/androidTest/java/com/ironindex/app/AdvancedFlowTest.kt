@@ -114,6 +114,21 @@ class AdvancedFlowTest {
         compose.onNodeWithText("Alex").assertIsSelected()
     }
 
+    @Test fun personChipsStayPinnedWhileScrollingALongWorkout() {
+        val alex = Partner(name = "Alex")
+        val pair = Workout(name = "Long pair day", partners = listOf(WorkoutPartner(alex.id, alex.name, true)))
+        val workout = pair.copy(exercises = (1..10).map { pair.newEntry(Exercise(name = "Move $it"), null) })
+        runBlocking { store.save(workout); store.savePartner(alex) }
+        launch(workout)
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Discard workout"))
+        compose.onNodeWithText("Long pair day").assertDoesNotExist()
+        compose.onNodeWithText("Alex").assertIsDisplayed().performClick()
+        compose.onNodeWithText("Alex").assertIsSelected()
+        compose.onNodeWithContentDescription("Skip Move 10 for Alex").assertIsDisplayed()
+        compose.onNodeWithText("You").assertIsDisplayed().performClick()
+        compose.onNodeWithContentDescription("Skip Move 10 for you").assertIsDisplayed()
+    }
+
     @Test fun startingARoutineAsksAboutTheDraftAndUnitsAndCommasWork() {
         val draft = Workout(name = "Morning draft", exercises = listOf(WorkoutExercise(exercise = Exercise(name = "Row"))))
         val routine = Workout(name = "Leg day", isTemplate = true, unit = "lb", exercises = listOf(WorkoutExercise(exercise = Exercise(name = "Leg press"))))
