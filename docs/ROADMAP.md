@@ -12,6 +12,7 @@ Effort: 🟢 small (hours) · 🟡 medium (a day or two) · 🔴 large (multi-da
 | Faster logging: prefill from last session, keyboard Next/Done that checks the set, pinned person chips, compact cards | 🟡 | E2E review gym-friction list. |
 | Merge duplicate custom exercises | 🟡 | Rename-vs-separate shipped in 0.3.3; merging existing duplicates is still manual. |
 | Rest timer after checking a set | 🟡 | Per-exercise default, notification when done. |
+| Write finished workouts to Health Connect | 🟡 | So Discipline (and Samsung Health) see sessions; update on edit/move, delete on delete. See [accounts & sync brainstorm](brainstorms/2026-09-29-accounts-sync-and-discipline-link-brainstorm.md). |
 | Coach mode: concurrent workouts per client | 🔴 | Start any routine for a partner without being a participant yourself. See 0.3.0 notes in CHANGELOG. |
 | Richer curated exercise library | 🟡 | More starters with primary/secondary muscles. |
 
@@ -19,7 +20,7 @@ Effort: 🟢 small (hours) · 🟡 medium (a day or two) · 🔴 large (multi-da
 
 | Idea | Effort | Notes |
 |---|---|---|
-| Discipline sync / optional account / cloud backup | ⚫ | Needs ownership, IDs, tombstones and conflict policy. See docs/PRODUCT.md. |
+| Optional Google sign-in + free cloud sync | ⚫ | Drive app-data folder first (free to run), Supabase only for server features; shared Google identity with Discipline. See [accounts & sync brainstorm](brainstorms/2026-09-29-accounts-sync-and-discipline-link-brainstorm.md). |
 | Cross-phone partner sharing | ⚫ | Depends on sync decisions. |
 | Release signing, store assets, localization | 🔴 | Before any public release. |
 | Physical-device + TalkBack walkthrough | 🟢 | Tracked in docs/VERIFICATION.md. |

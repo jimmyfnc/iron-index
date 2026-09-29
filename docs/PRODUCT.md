@@ -77,7 +77,8 @@ until a migration and import/export contract have been reviewed.
 1. Rest timer and a richer curated exercise library.
    Coach mode: separate concurrent workouts per client, started from any routine.
 2. Larger-history analytics optimization.
-3. Discipline sync, optional account and cloud backup.
+3. Optional Google sign-in and free cloud sync; Discipline sees workouts through Health Connect.
+   See [the accounts & sync brainstorm](brainstorms/2026-09-29-accounts-sync-and-discipline-link-brainstorm.md).
 4. Release signing, store assets, localization, and broader device testing.
 
 See [analytics definitions](ANALYTICS.md) for calculation and migration semantics,
