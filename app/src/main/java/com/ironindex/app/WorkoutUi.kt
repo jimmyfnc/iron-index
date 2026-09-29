@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -194,7 +195,9 @@ private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, readOnly: Boo
             if (!workout.isTemplate) SetupLine(entry, participantId, earlier, equipment, readOnly, who, saveSetup)
             val plateOnly = entry.equipmentProfile()?.takeIf { it.baseIn(workout.unit) != null && it.loadMode == LoadMode.ADDED }
             val perSide = if (entry.exercise.mode != ExerciseMode.BILATERAL) "Per side · " else ""
-            if (!readOnly) Text(when {
+            // How to type weights, until you've typed one (then each set's own hint says what the number means).
+            // Single-arm/leg keeps its "per side" reminder: the set hints don't repeat it.
+            if (!readOnly && (sets.none { it.weight.isNotBlank() } || entry.exercise.mode != ExerciseMode.BILATERAL)) Text(when {
                 workout.isTemplate -> "Optional targets prefill your next session."
                 plateOnly != null -> "${perSide}Plates only · the ${weightText(plateOnly.baseIn(workout.unit)!!)} ${workout.unit} ${baseName(plateOnly.type)} is added for totals"
                 entry.equipmentProfile()?.baseIn(workout.unit) != null -> entry.equipmentProfile()!!.let { "${perSide}Total weight · the ${weightText(it.baseIn(workout.unit)!!)} ${workout.unit} ${baseName(it.type)} is included" }
@@ -370,16 +373,23 @@ private fun SetRow(exerciseName: String, number: Int, set: SetEntry, unit: Strin
     LaunchedEffect(set.weight, weightFocused, readOnly) { if ((readOnly || !weightFocused) && weight != set.weight) weight = set.weight }
     LaunchedEffect(set.reps, repsFocused, readOnly) { if ((readOnly || !repsFocused) && reps != set.reps) reps = set.reps }
     val suffix = if (set.side == Side.BOTH) "" else " ${set.side.name.lowercase().replaceFirstChar { it.uppercase() }}"
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
     Column {
         if (suffix.isNotEmpty()) Text("Set $number ·$suffix", color = if (set.side == Side.LEFT) Lavender else Coral, fontWeight = FontWeight.Bold)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             if (set.side == Side.BOTH) FitText("$number", color = if (set.counts) Lime else Muted, modifier = Modifier.width(18.dp))
             SetField(weight, { raw -> val value = raw.replace(',', '.'); weight = value; onChange { it.copy(weight = value) } },
                 if (plateOnly) "plates $unit" else unit, readOnly, isError = weight.isNotBlank() && weight.toWeightOrNull() == null, KeyboardType.Decimal,
-                Modifier.weight(1f).onFocusChanged { weightFocused = it.isFocused }.semantics { contentDescription = "$exerciseName set $number$suffix ${if (plateOnly) "plates" else "weight"} in $unit" })
+                Modifier.weight(1f).onFocusChanged { weightFocused = it.isFocused }.semantics { contentDescription = "$exerciseName set $number$suffix ${if (plateOnly) "plates" else "weight"} in $unit" },
+                imeAction = ImeAction.Next)
             SetField(reps, { value -> reps = value; onChange { it.copy(reps = value) } },
                 "reps", readOnly, isError = reps.isNotBlank() && reps.toIntOrNull()?.let { it in 1..9999 } != true, KeyboardType.Number,
-                Modifier.weight(1f).onFocusChanged { repsFocused = it.isFocused }.semantics { contentDescription = "$exerciseName set $number$suffix reps" })
+                Modifier.weight(1f).onFocusChanged { repsFocused = it.isFocused }.semantics { contentDescription = "$exerciseName set $number$suffix reps" },
+                // Done on the keyboard checks a valid set (live workouts and edits; routines have no checkbox) and closes it.
+                imeAction = ImeAction.Done, onDone = {
+                    if (!template && !readOnly) onChange { if (it.valid()) it.copy(complete = true) else it }
+                    focus.clearFocus()
+                })
             if (!template) Checkbox(checked = set.complete, enabled = !readOnly && (set.complete || set.valid()),
                 onCheckedChange = { checked -> onChange { it.copy(complete = checked && it.valid()) } }, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = "Complete set $number$suffix" })
             if (!readOnly) IconButton(onClick = { deleting = true }) { Icon(Icons.Rounded.Close, "Delete set $number$suffix", tint = Muted) }
@@ -397,7 +407,8 @@ private fun SetRow(exerciseName: String, number: Int, set: SetEntry, unit: Strin
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SetField(value: String, onValueChange: (String) -> Unit, label: String, readOnly: Boolean, isError: Boolean, keyboardType: KeyboardType, modifier: Modifier) {
+private fun SetField(value: String, onValueChange: (String) -> Unit, label: String, readOnly: Boolean, isError: Boolean, keyboardType: KeyboardType, modifier: Modifier,
+                     imeAction: ImeAction = ImeAction.Default, onDone: (() -> Unit)? = null) {
     val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val colors = OutlinedTextFieldDefaults.colors()
     val padding = OutlinedTextFieldDefaults.contentPadding(start = 10.dp, end = 10.dp)
@@ -405,7 +416,8 @@ private fun SetField(value: String, onValueChange: (String) -> Unit, label: Stri
     val top = with(androidx.compose.ui.platform.LocalDensity.current) { 8.sp.toDp() }
     androidx.compose.foundation.text.BasicTextField(value, onValueChange, readOnly = readOnly, singleLine = true, interactionSource = interaction,
         textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface), cursorBrush = androidx.compose.ui.graphics.SolidColor(if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary),
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+        keyboardActions = if (onDone != null) androidx.compose.foundation.text.KeyboardActions(onDone = { onDone() }) else androidx.compose.foundation.text.KeyboardActions.Default,
         modifier = modifier.semantics(mergeDescendants = true) {}.padding(top = top).defaultMinSize(minHeight = OutlinedTextFieldDefaults.MinHeight)) { inner ->
         OutlinedTextFieldDefaults.DecorationBox(value, inner, enabled = true, singleLine = true, visualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
             interactionSource = interaction, isError = isError, label = { FitText(label) }, colors = colors, contentPadding = padding,

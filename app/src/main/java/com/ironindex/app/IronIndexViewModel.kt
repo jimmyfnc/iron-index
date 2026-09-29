@@ -190,7 +190,13 @@ class IronIndexViewModel @JvmOverloads constructor(
         val savedEquipment = equipment?.let { store.ensureEquipment(it) }
         val normalized = exercise.copy(equipment = "", brand = "", defaultEquipmentId = savedEquipment?.id)
         if (custom) store.saveExercise(normalized)
-        store.edit(id) { w -> w.copy(exercises = w.exercises + w.newEntry(normalized, savedEquipment, partnerOnly)) }
+        // Routines keep their own targets; live workouts and finished-session edits start from last time's sets.
+        // Read from the store, not the history StateFlow, so a session finished moments ago is included.
+        val past = store.workouts.first()
+        store.edit(id) { w ->
+            val entry = w.newEntry(normalized, savedEquipment, partnerOnly)
+            w.copy(exercises = w.exercises + if (w.isTemplate) entry else entry.prefilledFrom(past, w))
+        }
     }
     fun skipExercise(workoutId: String, entryId: String, participantId: String?) = edit(workoutId) { it.skipExercise(entryId, participantId) }
     fun includeExercise(workoutId: String, entryId: String, participantId: String?) = edit(workoutId) { it.includeExercise(entryId, participantId) }

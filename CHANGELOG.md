@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.0 - 2026-09-29
+
+- **Start from last time.** Adding an exercise fills in each person's sets from the last time they did it on that machine, unchecked, so a repeat workout is mostly tapping the checkboxes. Change any number before you check it. If that session was in the other unit or the machine's starting weight changed, the numbers are converted so they mean the same weight. Routines still use their own targets.
+- **Log from the keyboard.** In a set, the keyboard's Next jumps from weight to reps, and Done on reps checks the set and closes the keyboard.
+- **Tidier cards.** The "how to type weights" line disappears once you've typed a weight (each set's own hint still explains plates and bars); single-arm and single-leg exercises keep their "per side" reminder.
+
 ## 0.9.0 - 2026-09-29
 
 - **Share workouts with Health Connect.** Turn it on in Train → Backup and each finished session is saved to Health Connect, so apps like Discipline and Samsung Health can see you trained. It's off until you switch it on and allow it.

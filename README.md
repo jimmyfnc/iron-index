@@ -1,7 +1,7 @@
 # IronIndex
 
 A colorful, standalone Android workout tracker. Built with Kotlin, Jetpack Compose
-and Room. Works offline with no account required. Current version: **0.9.0**.
+and Room. Works offline with no account required. Current version: **0.10.0**.
 
 ## Included
 
@@ -38,7 +38,9 @@ and Room. Works offline with no account required. Current version: **0.9.0**.
   to change values or add a setting (added to the machine for next time).
 - **Train → Partners**: add profiles with an optional goal and notes. **History & stats**
   shows a partner's sessions, records and totals, and links to their Progress charts.
-- **Inside a workout**: **Partners** attaches people and optionally enables their sets;
+- **Inside a workout**: adding an exercise fills in each person's sets from last time on that machine
+  (unchecked; converted if the unit or starting weight changed). The keyboard's Next goes from weight
+  to reps and Done checks the set. **Partners** attaches people and optionally enables their sets;
   person chips switch logging and stay pinned at the top while you scroll. New exercises
   mirror to everyone. **Skip for …** hides an exercise for one person (Add brings it back
   with their targets). Adding an exercise while a partner chip is selected adds it only for them.
@@ -92,6 +94,8 @@ Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
 0.2.0: [Partner + Left/Right logging](docs/screenshots/0.2.0/logging.png) ·
 [Reordering](docs/screenshots/0.2.0/reorder.png) ·
 [Progress](docs/screenshots/0.2.0/progress.png). These previews use synthetic test data.
+
+0.10.0: [Prefilled from last time](docs/screenshots/0.10.0/prefilled-from-last-time.png).
 
 0.9.0: [Health Connect card](docs/screenshots/0.9.0/health-connect-card.png) ·
 [Entry in Health Connect](docs/screenshots/0.9.0/health-connect-entry.png) ·

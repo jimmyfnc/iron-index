@@ -1,5 +1,13 @@
 # IronIndex verification
 
+## 0.10.0 - 2026-09-29
+
+- assembleDebug, all 86 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 34 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned (the owner's phone was attached but never targeted).
+- Unit coverage (PrefillTest): last session's checked sets per person, unchecked, order and rounds kept; only the same exercise, equipment and sides; each person's own last session (falling back past sessions they skipped); unit conversion; plates-only re-basing when the sled changed; every matching entry that day; editing a past session only looks earlier; routines and the current workout ignored; no history keeps blank sets.
+- Connected: adding Bench press through the picker after a 135 × 8 / 155 × 5 session starts with those two sets unchecked; retyping set 2's reps and pressing the keyboard action checks only that set.
+- Manual emulator run: typed 180 → Enter → 10 → Enter on a plates-only leg press; the set was checked and the keyboard closed. After finishing, a new workout's Leg press (Hammer Strength) started at 180 plates × 10 unchecked with "+167 sled = 347 lb total", matching Last time.
+- A code review found that editing an old session prefilled from later sessions (disagreeing with its Last time line), only the first of repeated entries being used, a possibly stale history snapshot, and the per-side reminder disappearing. All fixed with tests.
+
 ## 0.9.0 - 2026-09-29
 
 - assembleDebug, all 75 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 33 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned (the owner's phone was not attached).

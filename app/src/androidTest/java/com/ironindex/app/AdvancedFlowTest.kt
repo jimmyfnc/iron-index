@@ -316,4 +316,34 @@ class AdvancedFlowTest {
         awaitText("Add attachment, pulley height")
         assertTrue(today().setupFor(alex.id).isEmpty())
     }
+
+    @Test fun newExercisesStartFromLastTimeAndDoneChecksTheSet() {
+        val benchStarter = starterExercises.single { it.id == "bench-press" }
+        val barbell = legacyEquipment(benchStarter)!!
+        val bench = benchStarter.copy(equipment = "", brand = "", defaultEquipmentId = barbell.id)
+        val past = Workout(name = "Last bench", startedAt = 1_000, finishedAt = 2_000, exercises = listOf(WorkoutExercise(exercise = bench,
+            equipmentId = barbell.id, equipmentSnapshot = barbell, sets = listOf(SetEntry(weight = "135", reps = "8", complete = true), SetEntry(weight = "155", reps = "5", complete = true)))))
+        val workout = Workout(name = "Bench again")
+        runBlocking { store.saveEquipment(barbell); store.save(past); store.save(workout) }
+        launch(workout)
+        compose.onNodeWithText("Add first exercise").performClick()
+        awaitText("Find your next move")
+        compose.onNodeWithText("Search exercises").performTextInput("Bench")
+        androidx.test.espresso.Espresso.closeSoftKeyboard()
+        compose.waitForIdle()
+        compose.onNode(hasText("Bench press") and hasClickAction()).performClick()
+        awaitText("Equipment for Bench press")
+        compose.onNode(hasText("Barbell") and !hasSetTextAction()).performClick()
+        // Last session's sets, unchecked, ready to confirm.
+        compose.waitUntil(10000) { runBlocking { store.workouts.first().single { it.id == workout.id }.exercises.singleOrNull()?.sets?.size == 2 } }
+        val entry = runBlocking { store.workouts.first().single { it.id == workout.id }.exercises.single() }
+        assertEquals(listOf("135" to "8", "155" to "5"), entry.sets.map { it.weight to it.reps })
+        assertTrue(entry.sets.none { it.complete })
+        compose.onNodeWithContentDescription("Bench press set 1 weight in lb").assert(hasText("135"))
+        // Retype set 2's reps, then the keyboard's Done checks it.
+        compose.onNodeWithContentDescription("Bench press set 2 reps").performScrollTo().performTextReplacement("6")
+        compose.onNodeWithContentDescription("Bench press set 2 reps").performImeAction()
+        compose.waitUntil(10000) { runBlocking { store.workouts.first().single { it.id == workout.id }.exercises.single().sets[1].let { it.complete && it.reps == "6" } } }
+        assertFalse(runBlocking { store.workouts.first().single { it.id == workout.id }.exercises.single().sets[0].complete })
+    }
 }
