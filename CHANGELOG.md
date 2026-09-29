@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.12.0 - 2026-09-29
+
+- **Rest timer.** Checking a set (or pressing Done on the keyboard) starts a rest countdown at the bottom of the workout: time left, which exercise and set, −15 / +15 and Skip. When it's up the bar turns lime and the phone buzzes once, then it clears itself.
+- **Set the rest per exercise** in its details: 60 s, 90 s (the default), 2 min, 3 min or Off.
+- **Outside the app too.** Tap the bell on the bar to allow notifications: the countdown shows in your notification shade and a "Rest's up" alert pops when it ends. You won't get the alert while you're looking at the bar.
+- **On-time alerts.** Android may hold the alert back by up to a minute. The bell then offers Alarms & reminders once; switch it on and the alert arrives on the second.
+- Single-arm and single-leg exercises start rest once both sides of the set are checked. With partners, the bar says whose set it was.
+- The bar gets out of the way while the keyboard is open, and it only appears in a live workout (not routines or finished sessions). Finishing or discarding the workout stops it.
+- Screen readers announce "Rest's up" once instead of reading every second.
+
 ## 0.11.0 - 2026-09-29
 
 - **Merge duplicate exercises.** Train → Exercises lists your library and puts likely duplicates first: names that only differ by capitals, spacing or a plural, like "Biceps Curl" and "Biceps curl". Tap Merge on the one you don't want, pick the one to keep, and every session and routine with it moves over. Sets, machines and setup stay exactly as logged, and each machine still keeps its own history.

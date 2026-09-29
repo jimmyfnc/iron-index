@@ -1,7 +1,7 @@
 # IronIndex
 
 A colorful, standalone Android workout tracker. Built with Kotlin, Jetpack Compose
-and Room. Works offline with no account required. Current version: **0.11.0**.
+and Room. Works offline with no account required. Current version: **0.12.0**.
 
 ## Included
 
@@ -13,6 +13,7 @@ and Room. Works offline with no account required. Current version: **0.11.0**.
 - Dark ink, lime, lavender and coral interface.
 - Drag-and-drop exercise ordering via Reorder, with accessible up/down alternatives.
 - Equipment library: separate brand, model, optional gym/nickname, and a starting weight (bar, sled) with plate math or plates-only logging.
+- Rest timer after each checked set: per-exercise length, −15 / +15, and an optional notification when rest is up.
 - Machine setup: named settings (seat height, cable attachment…) recorded per person on each exercise, prefilled from last time.
 - Partner Manager with goals, notes, history and stats; independent sets and per-person exercise lists.
 - Single-arm/single-leg logging with independent Left / Right values.
@@ -43,7 +44,9 @@ and Room. Works offline with no account required. Current version: **0.11.0**.
   shows a partner's sessions, records and totals, and links to their Progress charts.
 - **Inside a workout**: adding an exercise fills in each person's sets from last time on that machine
   (unchecked; converted if the unit or starting weight changed). The keyboard's Next goes from weight
-  to reps and Done checks the set. **Partners** attaches people and optionally enables their sets;
+  to reps and Done checks the set. Checking a set starts the **rest timer** at the bottom (−15, +15,
+  Skip); set its length or turn it off in the exercise's details, and tap the bell to be alerted
+  outside the app (allow Alarms & reminders when it asks, so the alert is on time). **Partners** attaches people and optionally enables their sets;
   person chips switch logging and stay pinned at the top while you scroll. New exercises
   mirror to everyone. **Skip for …** hides an exercise for one person (Add brings it back
   with their targets). Adding an exercise while a partner chip is selected adds it only for them.

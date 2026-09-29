@@ -20,6 +20,8 @@ data class Exercise(
     val target: String = "",
     val mode: ExerciseMode = ExerciseMode.BILATERAL,
     val defaultEquipmentId: String? = null,
+    /** Rest between sets in seconds; null uses the default (90 s), 0 turns the rest timer off. */
+    val restSeconds: Int? = null,
 )
 
 @Serializable enum class ExerciseMode { BILATERAL, SINGLE_ARM, SINGLE_LEG }

@@ -125,7 +125,10 @@ class IronIndexViewModel @JvmOverloads constructor(
         }
         pendingStart.value = null
         openedParticipant.value = null
-        opened.value = store.start(source, unit.value, replaceDraft)
+        val draft = store.activeDraft()?.id
+        val id = store.start(source, unit.value, replaceDraft)
+        if (id != draft) endRest() // a new workout doesn't inherit the last one's rest; resuming keeps it
+        opened.value = id
     }
     /** Time of the last successful export, or null if this phone has never exported. */
     val lastExport = MutableStateFlow(preferences.getLong("lastExport", 0L).takeIf { it > 0 })
@@ -209,10 +212,36 @@ class IronIndexViewModel @JvmOverloads constructor(
             require(workout.allCompletedSets > 0) { "Log at least one set before finishing." }
             workout.copy(finishedAt = System.currentTimeMillis())
         }
+        endRest()
         opened.value = null
     }
+    /** The rest countdown after checking a set; kept in preferences so it survives the app closing. */
+    val restTimer = MutableStateFlow(preferences.getString("restTimer", null)
+        ?.let { runCatching { storageJson.decodeFromString(RestTimer.serializer(), it) }.getOrNull() }
+        ?.takeIf { !it.done(System.currentTimeMillis() - 60_000) })
+    private fun setRest(timer: RestTimer?) {
+        restTimer.value = timer
+        preferences.edit().apply { if (timer == null) remove("restTimer") else putString("restTimer", storageJson.encodeToString(RestTimer.serializer(), timer)) }.apply()
+        val app = getApplication<Application>()
+        runCatching { if (timer == null) RestAlarm.cancel(app) else RestAlarm.schedule(app, timer) }
+    }
+    /** Starts rest after checking set [setNumber] of [exercise] (nothing if its timer is off); [person] names a partner. */
+    fun startRest(exercise: Exercise, setNumber: Int, person: String? = null) {
+        restAfter(exercise, setNumber, System.currentTimeMillis())?.let { t -> setRest(person?.let { t.copy(label = "$it · ${t.label}") } ?: t) }
+    }
+    /** The bar showed "Rest's up": clear the notification shade (the alert would repeat what's on screen). */
+    fun restSeen() { runCatching { RestAlarm.dismiss(getApplication()) } }
+    fun adjustRest(deltaSeconds: Int) { restTimer.value?.let { setRest(it.adjusted(deltaSeconds, System.currentTimeMillis())) } }
+    fun endRest() = setRest(null)
+    /** Re-schedules the alert after the notification permission is granted mid-rest. */
+    fun restNotificationsAllowed() { restTimer.value?.let(::setRest) }
+
     // A deleted session leaves history, and the next Health Connect sync removes its record.
-    fun delete(id: String) = run { store.delete(id); if (opened.value == id) opened.value = null }
+    fun delete(id: String) = run {
+        if (workouts.value.find { it.id == id }?.let { !it.isTemplate && it.finishedAt == null } == true) endRest()
+        store.delete(id)
+        if (opened.value == id) opened.value = null
+    }
     fun savePartner(partner: Partner) = run {
         require(partner.name.isNotBlank()) { "Enter a partner name." }
         store.savePartner(partner.copy(name = partner.name.trim(), goal = partner.goal.trim(), notes = partner.notes.trim()))

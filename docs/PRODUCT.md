@@ -76,7 +76,7 @@ until a migration and import/export contract have been reviewed.
 
 ## Later
 
-1. Rest timer and a richer curated exercise library.
+1. A richer curated exercise library.
    Coach mode: separate concurrent workouts per client, started from any routine.
 2. Larger-history analytics optimization.
 3. Optional Google sign-in and free cloud sync; Discipline sees workouts through Health Connect.

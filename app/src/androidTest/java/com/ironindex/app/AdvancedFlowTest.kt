@@ -372,4 +372,26 @@ class AdvancedFlowTest {
         compose.waitUntil(10000) { runBlocking { store.exercises.first().none { it.id == custom.id } } }
         compose.onAllNodesWithText("Look like duplicates").assertCountEquals(0)
     }
+
+    @Test fun checkingASetStartsTheRestTimer() {
+        val row = Exercise(id = "row-x", name = "Cable row", restSeconds = 120)
+        val workout = Workout(name = "Pull day", exercises = listOf(WorkoutExercise(exercise = row, sets = listOf(SetEntry(weight = "100", reps = "10")))))
+        runBlocking { store.save(workout) }
+        launch(workout)
+        compose.onNodeWithContentDescription("Complete set 1").performClick()
+        awaitText("Cable row · set 1")
+        val started = vm.restTimer.value!!
+        assertEquals(120, started.totalSeconds)
+        // Leaving and tapping Resume workout reopens the same draft and keeps the rest running.
+        compose.runOnUiThread { vm.opened.value = null }
+        compose.runOnUiThread { vm.start() }
+        compose.waitUntil(10000) { vm.opened.value == workout.id }
+        assertEquals(started, vm.restTimer.value)
+        awaitText("Cable row · set 1")
+        compose.onNodeWithContentDescription("15 seconds more rest").performClick()
+        compose.waitUntil(10000) { vm.restTimer.value?.endsAt == started.endsAt + 15_000 }
+        compose.onNodeWithText("Skip").performClick()
+        compose.waitUntil(10000) { vm.restTimer.value == null }
+        compose.onAllNodesWithText("Cable row · set 1").assertCountEquals(0)
+    }
 }

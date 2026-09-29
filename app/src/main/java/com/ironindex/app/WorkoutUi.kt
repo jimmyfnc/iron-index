@@ -55,7 +55,12 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
     val personLogs = remember(history, participantId) { completedHistory(history, participantId) }
     LaunchedEffect(workout.id) { vm.openedParticipant.value = null }
     LaunchedEffect(workout.partners) { if (athlete.isNotBlank() && workout.partners.none { it.id == athlete && it.trackSets }) athlete = "" }
-    LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxSize().imePadding()) {
+    val rest by vm.restTimer.collectAsStateWithLifecycle()
+    // Rest only runs in a live workout; routines and finished sessions never show it.
+    val live = !workout.isTemplate && !finished
+    Box(Modifier.fillMaxSize().imePadding()) {
+    LazyColumn(contentPadding = PaddingValues(start = 20.dp, top = 20.dp, end = 20.dp, bottom = if (live && rest != null) 140.dp else 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxSize()) {
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 IconButton(onClick = { vm.opened.value = null }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
@@ -112,7 +117,9 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
                     remove = { vm.edit(workout.id) { w -> w.copy(exercises = w.exercises.filterNot { it.id == entry.id }) } },
                     skip = if (tracked.isEmpty()) null else ({ vm.skipExercise(workout.id, entry.id, participantId) }), personName = personName,
                     editEquipment = vm::updateEquipment, equipmentUses = { id -> equipmentUses(vm.workouts.value, id) },
-                    saveSetup = { values, newNames -> vm.saveSetup(workout.id, entry.id, participantId, values, entry.equipmentKey(), newNames) })
+                    saveSetup = { values, newNames -> vm.saveSetup(workout.id, entry.id, participantId, values, entry.equipmentKey(), newNames) },
+                    // The library's copy has the current rest length (the entry's copy may predate a change).
+                    onSetChecked = { number -> if (live) vm.startRest(library.find { it.id == entry.exercise.id } ?: entry.exercise, number, personName) })
             }
         }
         if (!readOnly) item {
@@ -136,6 +143,9 @@ fun WorkoutScreen(workout: Workout, library: List<Exercise>, equipment: List<Equ
             }
         }
     }
+    @OptIn(ExperimentalLayoutApi::class) val typing = WindowInsets.isImeVisible
+    if (live) rest?.let { RestBar(it, vm, hidden = typing, modifier = Modifier.align(Alignment.BottomCenter)) }
+    }
     if (adding) ExercisePicker(library, equipment, history, { adding = false }) { exercise, custom, profile -> vm.addExercise(workout.id, exercise, custom, profile, partnerOnly = participantId); adding = false }
     if (renaming) NameDialog("Name your workout", workout.name, { renaming = false }) { name -> vm.edit(workout.id) { it.copy(name = name) }; renaming = false }
     if (saving) NameDialog("Save as a routine", workout.name, { saving = false }) { name -> vm.saveRoutine(workout, name); saving = false }
@@ -153,7 +163,8 @@ private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, readOnly: Boo
                          update: ((WorkoutExercise) -> WorkoutExercise) -> Unit, details: (Exercise, Equipment?) -> Unit, remove: () -> Unit,
                          skip: (() -> Unit)? = null, personName: String? = null,
                          editEquipment: ((Equipment, Boolean) -> Unit)? = null, equipmentUses: (String) -> Int = { 0 },
-                         saveSetup: (Map<String, String>, List<String>) -> Unit = { _, _ -> }) {
+                         saveSetup: (Map<String, String>, List<String>) -> Unit = { _, _ -> },
+                         onSetChecked: (Int) -> Unit = {}) {
     var editing by rememberSaveable { mutableStateOf(false) }
     var removing by rememberSaveable { mutableStateOf(false) }
     val who = personName ?: "you"
@@ -209,6 +220,8 @@ private fun ExerciseCard(entry: WorkoutExercise, workout: Workout, readOnly: Boo
                     SetRow(entry.exercise.name, groups.indexOf(set.groupId) + 1, set, workout.unit, workout.isTemplate, readOnly, hint = { typed -> loadHint(entry, typed, workout.unit) },
                         plateOnly = plateOnly != null,
                         onChange = { transform -> update { e -> e.copy(sets = e.sets.map { if (it.id == set.id) transform(it) else it }) } },
+                        // One side of a single-arm/leg round isn't a finished set yet: rest once every side is checked.
+                        onChecked = { if (sets.none { it.groupId == set.groupId && it.id != set.id && !it.complete }) onSetChecked(groups.indexOf(set.groupId) + 1) },
                         onDelete = { update { e -> e.copy(sets = e.sets.filterNot { it.id == set.id }) } })
                 }
             }
@@ -344,6 +357,76 @@ private fun loggedSummary(entry: WorkoutExercise, workout: Workout): String? =
             ?.let { n -> "${if (id == null) "you" else workout.partners.first { it.id == id }.name}: $n" }
     }.joinToString().ifEmpty { null }
 
+/**
+ * Rest countdown pinned to the bottom of a live workout: time left, what it's for, −15 / +15 / Skip. It buzzes
+ * once when rest is up and clears itself 20 seconds later. The bell asks for notification access so the
+ * countdown and "Rest's up" alert also show outside the app, then (once) for Alarms & reminders so the alert
+ * is on time. While [hidden] (keyboard open) it draws nothing,
+ * so it never covers the field being typed in, but still counts and buzzes.
+ */
+@Composable
+private fun RestBar(timer: RestTimer, vm: IronIndexViewModel, hidden: Boolean, modifier: Modifier = Modifier) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(timer) { while (true) { now = System.currentTimeMillis(); if (timer.done(now)) break; kotlinx.coroutines.delay(250) } }
+    val done = timer.done(now)
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    // Whether the bar is actually seen: a backgrounded app keeps this screen composed and running, and the
+    // keyboard hides it. When it isn't, the notification alert does this job; clearing it here would hide it.
+    var visible by remember { mutableStateOf(false) }
+    val seen = visible && !hidden
+    LaunchedEffect(seen) { RestAlarm.barShowing = seen }
+    LaunchedEffect(done, timer.endsAt, seen) {
+        if (!done || !seen) return@LaunchedEffect
+        // Buzz only when it has just finished, not when coming back to a rest that ended a while ago.
+        if (System.currentTimeMillis() - timer.endsAt < 3_000) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+        vm.restSeen()
+        kotlinx.coroutines.delay((timer.endsAt + 20_000 - System.currentTimeMillis()).coerceAtLeast(0))
+        vm.endRest()
+    }
+    var canNotify by remember { mutableStateOf(RestAlarm.canNotify(context)) }
+    var onTime by remember { mutableStateOf(RestAlarm.onTime(context)) }
+    var askedOnTime by remember { mutableStateOf(RestAlarm.askedOnTime(context)) }
+    val ask = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { ok ->
+        canNotify = ok
+        if (ok) vm.restNotificationsAllowed()
+    }
+    // Only while IronIndex is visible does the bar stand in for the alert. Coming back from settings picks up
+    // newly granted access and reschedules.
+    androidx.lifecycle.compose.LifecycleStartEffect(Unit) {
+        visible = true
+        val n = RestAlarm.canNotify(context); val t = RestAlarm.onTime(context)
+        if (n != canNotify || t != onTime) { canNotify = n; onTime = t; if (n) vm.restNotificationsAllowed() }
+        onStopOrDispose { RestAlarm.barShowing = false; visible = false }
+    }
+    if (hidden) return
+    Surface(color = if (done) Lime else Panel, shape = RoundedCornerShape(24.dp), shadowElevation = 8.dp,
+        modifier = modifier.fillMaxWidth().padding(12.dp)) {
+        val ink = if (done) Ink else MaterialTheme.colorScheme.onSurface
+        Row(Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                // Only "Rest's up" is announced; a ticking live region would read out every second.
+                FitText(if (done) "Rest's up" else "Rest", color = if (done) Ink else Lime, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                    modifier = if (done) Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite } else Modifier)
+                FitText(if (done) timer.label else clockText(timer.remainingSeconds(now)), color = ink, fontSize = if (done) 16.sp else 28.sp, fontWeight = FontWeight.Black,
+                    modifier = Modifier.semantics { contentDescription = if (done) "Rest's up, ${timer.label}" else "Rest, ${timer.remainingSeconds(now)} seconds left, ${timer.label}" })
+                if (!done) FitText(timer.label, color = Muted, fontSize = 12.sp)
+            }
+            if (!done) {
+                TextButton(onClick = { vm.adjustRest(-15) }, modifier = Modifier.semantics { contentDescription = "15 seconds less rest" }) { Text("−15") }
+                TextButton(onClick = { vm.adjustRest(15) }, modifier = Modifier.semantics { contentDescription = "15 seconds more rest" }) { Text("+15") }
+            }
+            if (!done && !canNotify && android.os.Build.VERSION.SDK_INT >= 33) IconButton(onClick = { ask.launch(android.Manifest.permission.POST_NOTIFICATIONS) }) {
+                Icon(Icons.Rounded.NotificationsActive, "Alert me when rest is up, even outside IronIndex", tint = Lavender)
+            } else if (!done && canNotify && !onTime && !askedOnTime && android.os.Build.VERSION.SDK_INT >= 31) IconButton(onClick = {
+                RestAlarm.markAskedOnTime(context); askedOnTime = true
+                runCatching { context.startActivity(RestAlarm.onTimeSettings(context)) }
+            }) { Icon(Icons.Rounded.NotificationsActive, "Make the rest alert on time: allow Alarms and reminders", tint = Lavender) }
+            TextButton(onClick = vm::endRest) { Text(if (done) "Done" else "Skip", color = ink) }
+        }
+    }
+}
+
 @Composable
 private fun SkippedExerciseRow(entry: WorkoutExercise, personName: String?, readOnly: Boolean, include: () -> Unit) {
     Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
@@ -361,7 +444,7 @@ private fun SkippedExerciseRow(entry: WorkoutExercise, personName: String?, read
 
 @Composable
 private fun SetRow(exerciseName: String, number: Int, set: SetEntry, unit: String, template: Boolean, readOnly: Boolean, hint: (String) -> String? = { null },
-                   plateOnly: Boolean = false, onChange: ((SetEntry) -> SetEntry) -> Unit, onDelete: () -> Unit) {
+                   plateOnly: Boolean = false, onChange: ((SetEntry) -> SetEntry) -> Unit, onChecked: () -> Unit = {}, onDelete: () -> Unit) {
     var deleting by rememberSaveable { mutableStateOf(false) }
     var weight by rememberSaveable(set.id) { mutableStateOf(set.weight) }
     var reps by rememberSaveable(set.id) { mutableStateOf(set.reps) }
@@ -387,11 +470,14 @@ private fun SetRow(exerciseName: String, number: Int, set: SetEntry, unit: Strin
                 Modifier.weight(1f).onFocusChanged { repsFocused = it.isFocused }.semantics { contentDescription = "$exerciseName set $number$suffix reps" },
                 // Done on the keyboard checks a valid set (live workouts and edits; routines have no checkbox) and closes it.
                 imeAction = ImeAction.Done, onDone = {
-                    if (!template && !readOnly) onChange { if (it.valid()) it.copy(complete = true) else it }
+                    if (!template && !readOnly) {
+                        onChange { if (it.valid()) it.copy(complete = true) else it }
+                        if (!set.complete && set.copy(weight = weight, reps = reps).valid()) onChecked()
+                    }
                     focus.clearFocus()
                 })
             if (!template) Checkbox(checked = set.complete, enabled = !readOnly && (set.complete || set.valid()),
-                onCheckedChange = { checked -> onChange { it.copy(complete = checked && it.valid()) } }, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = "Complete set $number$suffix" })
+                onCheckedChange = { checked -> onChange { it.copy(complete = checked && it.valid()) }; if (checked && !set.complete) onChecked() }, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = "Complete set $number$suffix" })
             if (!readOnly) IconButton(onClick = { deleting = true }) { Icon(Icons.Rounded.Close, "Delete set $number$suffix", tint = Muted) }
         }
         hint(weight)?.let { Text(it, color = Lavender, fontSize = 12.sp, modifier = Modifier.padding(start = if (set.side == Side.BOTH) 28.dp else 0.dp)

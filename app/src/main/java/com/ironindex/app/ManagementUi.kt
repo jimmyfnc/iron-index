@@ -361,6 +361,7 @@ fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: Lis
     var primary by rememberSaveable { mutableStateOf(initial.primaryTargets().joinToString(", ")) }
     var secondary by rememberSaveable { mutableStateOf(initial.secondaryMuscles.joinToString(", ")) }
     var target by rememberSaveable { mutableStateOf(initial.target) }
+    var rest by rememberSaveable { mutableStateOf(initial.restSeconds ?: DEFAULT_REST_SECONDS) }
     var mode by rememberSaveable { mutableStateOf(initial.mode.name) }
     var chosen by rememberSaveable(stateSaver = equipmentSaver) { mutableStateOf(initialEquipment) }
     // Follow catalog edits (such as a name fixed with Edit) for the machine on screen.
@@ -412,6 +413,13 @@ fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: Lis
             OutlinedTextField(secondary, { secondary = it }, label = { FitText("Secondary muscles") }, placeholder = { FitText("Comma separated: triceps, front delts") })
             Text("Examples: ${muscleSuggestions.take(12).joinToString(", ")}", style = MaterialTheme.typography.bodySmall)
             OutlinedTextField(target, { target = it }, label = { FitText("Target notes") }, placeholder = { FitText("e.g. Upper chest emphasis") })
+            Text("Rest between sets", fontWeight = FontWeight.Bold)
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                REST_CHOICES.forEach { seconds ->
+                    FilterChip(rest == seconds, { rest = seconds }, label = { FitText(restChoiceText(seconds)) },
+                        modifier = Modifier.semantics { contentDescription = "Rest ${if (seconds == 0) "timer off" else restChoiceText(seconds)}" })
+                }
+            }
         }
     }, confirmButton = { TextButton(enabled = name.isNotBlank() && (!askOnRename || !initial.renamedTo(name) || identity.isNotEmpty()), onClick = {
         fun muscles(text: String) = text.split(',').map { it.trim() }.filter { it.isNotBlank() }.distinctBy { it.lowercase() }
@@ -419,7 +427,8 @@ fun ExerciseEditor(initial: Exercise, initialEquipment: Equipment?, catalog: Lis
         val base = if (askOnRename && initial.renamedTo(name) && identity == "separate") initial.copy(id = newId()) else initial
         save(base.copy(name = name.trim(), equipment = "", brand = "", muscleGroup = "", primaryMuscles = first,
             secondaryMuscles = muscles(secondary).filter { value -> first.none { it.equals(value, true) } },
-            target = target.trim(), mode = ExerciseMode.valueOf(mode), defaultEquipmentId = equipment?.id), equipment)
+            target = target.trim(), mode = ExerciseMode.valueOf(mode), defaultEquipmentId = equipment?.id,
+            restSeconds = rest.takeIf { it != DEFAULT_REST_SECONDS }), equipment)
     }) { Text("Save exercise") } }, dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } })
     if (picking) EquipmentPicker(catalog, { picking = false }) { chosen = it; picking = false }
     if (editingEquipment && editEquipment != null && equipment != null) EquipmentEditFlow(equipment, catalog, equipmentUses, { editingEquipment = false }, editEquipment)

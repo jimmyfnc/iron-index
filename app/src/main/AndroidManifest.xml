@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Health Connect: write finished sessions only; IronIndex never reads health data. -->
     <uses-permission android:name="android.permission.health.WRITE_EXERCISE" />
+    <!-- Rest timer: a countdown in the notification shade and a "Rest's up" alert (asked for from the timer bar). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Lets the "Rest's up" alert arrive on time when the phone allows exact alarms; otherwise it may be late. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <!-- Lets IronIndex find the Health Connect app on Android 13 and lower. -->
     <queries>
@@ -14,6 +18,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver android:name=".RestDoneReceiver" android:exported="false" />
 
         <!-- What IronIndex shares with Health Connect; opened from its permission screen (Android 13 and lower). -->
         <activity android:name=".HealthPrivacyActivity" android:exported="true">

@@ -1,5 +1,28 @@
 # IronIndex verification
 
+## 0.12.0 - 2026-09-29
+
+- assembleDebug, all 98 unit tests and lintDebug (zero errors, same 10 dependency warnings and two hints) passed. On emulator-5556 (Pixel 9 image, Android 16) with ANDROID_SERIAL pinned, all 36 connected tests passed before the last review fixes. The final full run had one failure (a leg-press test timing out after checking a set with the keyboard open), and AdvancedFlowTest then passed 13/13 twice in a row. The owner's phone was not targeted.
+- Unit coverage (RestTimerTest): rest length per exercise, the 90 s default or Off; remaining time rounds up and stops at zero; ±15 never ends in the past; clock and choice text; older saved exercises have no rest setting.
+- Connected: checking a set on an exercise set to 2 min starts a 120 s rest showing "Cable row · set 1"; leaving and resuming the workout keeps it; +15 adds 15 s; Skip clears it.
+- Manual emulator run: logging 135 × 8 with the keyboard's Done started rest (1:28, −15 / +15 / bell / Skip). The bar was gone while typing and came back when the keyboard closed. The bell asked for notifications. With the app in the background the shade showed "Resting · 00:47 · Bench press · set 2".
+  - With only the ordinary alarm, the alert was scheduled with a 67 s window. After tapping the bell's second offer and allowing Alarms & reminders, the rest was rescheduled exact (window 0), the bell disappeared, and "Rest's up · Bench press · set 4" arrived on the second.
+  - Reopening the app cleared the alert and the finished bar.
+- Found by hand and fixed: the bar kept running while the app was in the background (the screen stays composed), so it dismissed the background alert the moment it posted. It now stands in for the alert only while it's actually visible and not hidden by the keyboard.
+- Two code reviews found and fixed:
+  - TalkBack read every second.
+  - The inexact alert could be a minute late, which the code comment understated.
+  - The rest length came from the workout's stale copy of the exercise.
+  - Single-arm rest started after the first side.
+  - Coming back re-buzzed an old finished rest.
+  - A heads-up appeared over the app.
+  - The bar could cover the field being typed in.
+  - Finishing ended rest even when it was refused.
+  - A new workout inherited the old rest.
+  - Resume workout cancelled a running rest.
+  - The partner's name was missing from the label.
+- Known limit: tapping both sides of a single-arm set within about 0.1 s may not start rest.
+
 ## 0.11.0 - 2026-09-29
 
 - assembleDebug, all 93 unit tests, lintDebug (zero errors, same 10 dependency warnings and one hint) and all 35 connected tests passed on emulator-5554 with ANDROID_SERIAL pinned (the owner's phone was attached but never targeted). The new merge UI test first failed because it tapped list items behind the dialog; it now targets the dialog and passes.
