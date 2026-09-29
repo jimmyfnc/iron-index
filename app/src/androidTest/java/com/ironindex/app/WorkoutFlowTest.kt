@@ -31,7 +31,7 @@ class WorkoutFlowTest {
                 @Suppress("UNCHECKED_CAST") return IronIndexViewModel(app, store) as T
             }
         })[IronIndexViewModel::class.java]
-        compose.setContent { MaterialTheme { IronIndexApp(vm) } }
+        compose.setContent { MaterialTheme(colorScheme = IronIndexColors) { IronIndexApp(vm) } }
     }
     @After fun cleanup() { holder.clear(); store.close(); app.deleteDatabase(databaseName) }
 

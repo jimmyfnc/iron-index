@@ -33,7 +33,7 @@ class AdvancedFlowTest {
                 @Suppress("UNCHECKED_CAST") return IronIndexViewModel(app, store) as T
             }
         })[IronIndexViewModel::class.java]
-        compose.setContent { MaterialTheme { IronIndexApp(vm) } }
+        compose.setContent { MaterialTheme(colorScheme = IronIndexColors) { IronIndexApp(vm) } }
         compose.runOnIdle { vm.opened.value = workout.id }
         awaitText(workout.name)
     }
